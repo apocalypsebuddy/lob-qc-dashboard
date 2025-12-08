@@ -39,8 +39,60 @@ export default class SeedsController {
       const user = auth.getUserOrFail()
       logger.info('Creating new seed', { userId: user.id, email: user.email })
 
+      // Log raw request data
+      const rawBody = request.body()
+      logger.info('Raw request body', {
+        userId: user.id,
+        bodyKeys: Object.keys(rawBody),
+        hasAddresses: 'addresses' in rawBody,
+        addressesType: rawBody.addresses ? typeof rawBody.addresses : 'none',
+        addressesLength: Array.isArray(rawBody.addresses) ? rawBody.addresses.length : 'not array',
+        rawBody: JSON.stringify(rawBody),
+      })
+
       const data = await request.validateUsing(createSeedValidator)
-      logger.info('Seed form validated', { seedName: data.name, userId: user.id })
+      logger.info('Seed form validated', {
+        seedName: data.name,
+        userId: user.id,
+        frontTemplateId: data.frontTemplateId,
+        backTemplateId: data.backTemplateId,
+        cadence: data.cadence,
+        addressesCount: data.addresses ? data.addresses.length : 0,
+        addresses: JSON.stringify(data.addresses),
+      })
+
+      // Transform addresses array to match the model format
+      const toAddresses = data.addresses.map((addr, index) => {
+        const transformed = {
+          name: addr.toName || undefined,
+          company: addr.company || undefined,
+          address_line1: addr.addressLine1,
+          address_line2: addr.addressLine2 || undefined,
+          address_city: addr.addressCity,
+          address_state: addr.addressState,
+          address_zip: addr.addressZip,
+          address_country: addr.addressCountry || 'US',
+          phone: addr.phone || undefined,
+          email: addr.email || undefined,
+          description: addr.description || undefined,
+        }
+        logger.info(`Transformed address ${index + 1}`, {
+          userId: user.id,
+          addressIndex: index,
+          transformed: JSON.stringify(transformed),
+        })
+        return transformed
+      })
+
+      logger.info('Creating seed record', {
+        userId: user.id,
+        name: data.name,
+        frontTemplateId: data.frontTemplateId,
+        backTemplateId: data.backTemplateId,
+        cadence: data.cadence || 'one_time',
+        addressesCount: toAddresses.length,
+        toAddresses: JSON.stringify(toAddresses),
+      })
 
       const seed = await Seed.create({
         userId: user.id,
@@ -48,19 +100,7 @@ export default class SeedsController {
         frontTemplateId: data.frontTemplateId,
         backTemplateId: data.backTemplateId,
         cadence: data.cadence || 'one_time',
-        toAddress: {
-          name: data.toName || undefined,
-          company: data.company || undefined,
-          address_line1: data.addressLine1,
-          address_line2: data.addressLine2 || undefined,
-          address_city: data.addressCity,
-          address_state: data.addressState,
-          address_zip: data.addressZip,
-          address_country: data.addressCountry || 'US',
-          phone: data.phone || undefined,
-          email: data.email || undefined,
-          description: data.description || undefined,
-        },
+        toAddress: toAddresses,
         status: 'active',
         meta: {},
       })
@@ -69,14 +109,20 @@ export default class SeedsController {
         seedId: seed.id,
         seedName: seed.name,
         userId: user.id,
+        addressesCount: Array.isArray(seed.toAddress) ? seed.toAddress.length : 1,
       })
 
       return response.redirect().toRoute('seeds.show', { id: seed.id })
     } catch (error: any) {
       logger.error('Error creating seed', {
+        userId: auth.user?.id,
         error: error.message,
+        errorName: error.name,
+        errorCode: error.code,
         stack: error.stack,
-        code: error.code,
+        // Log validation errors if available
+        validationErrors: error.messages || error.cause?.messages || undefined,
+        requestBody: JSON.stringify(request.body()),
       })
       throw error
     }
@@ -104,6 +150,24 @@ export default class SeedsController {
     const proofsJson = JSON.stringify(proofsData)
     const proofsBase64 = Buffer.from(proofsJson, 'utf-8').toString('base64')
 
+    // Format addresses - handle both array and single object for backward compatibility
+    const addresses = Array.isArray(seed.toAddress) ? seed.toAddress : [seed.toAddress]
+    const addressesData = addresses.map((addr, index) => ({
+      index: index + 1,
+      name: addr.name || 'N/A',
+      company: addr.company || '',
+      address_line1: addr.address_line1,
+      address_line2: addr.address_line2 || '',
+      address_city: addr.address_city,
+      address_state: addr.address_state,
+      address_zip: addr.address_zip,
+      address_country: addr.address_country || 'US',
+      phone: addr.phone || '',
+      email: addr.email || '',
+      description: addr.description || '',
+      summary: `${addr.address_line1}, ${addr.address_city}, ${addr.address_state} ${addr.address_zip}`,
+    }))
+
     const seedData = {
       id: seed.id,
       name: seed.name,
@@ -111,6 +175,7 @@ export default class SeedsController {
       backTemplateId: seed.backTemplateId,
       status: seed.status,
       cadence: seed.cadence,
+      addresses: addressesData,
       statusClass:
         seed.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800',
       proofs: proofsData,
@@ -160,53 +225,102 @@ export default class SeedsController {
       const proofModule = await import('#models/proof')
       const Proof = proofModule.default
 
-      logger.info('Creating postcard via Lob API', {
+      // Ensure toAddress is an array
+      const addresses = Array.isArray(seed.toAddress) ? seed.toAddress : [seed.toAddress]
+
+      logger.info('Creating postcards via Lob API', {
         seedId: seed.id,
         frontTemplateId: seed.frontTemplateId,
         backTemplateId: seed.backTemplateId,
-        toAddress: seed.toAddress,
+        addressCount: addresses.length,
       })
 
-      const result = await LobClient.createPostcard(user, {
-        toAddress: seed.toAddress,
-        frontTemplateId: seed.frontTemplateId,
-        backTemplateId: seed.backTemplateId,
-      })
+      const createdProofs = []
+      const errors = []
 
-      logger.info('Postcard created successfully', {
-        resourceId: result.id,
-        lobUrl: result.url,
-        thumbnailUrl: result.thumbnail_url,
-        thumbnailUrlLength: result.thumbnail_url?.length || 0,
-        seedId: seed.id,
-      })
+      // Create a postcard for each address
+      for (let i = 0; i < addresses.length; i++) {
+        const address = addresses[i]
+        try {
+          logger.info(`Creating postcard ${i + 1} of ${addresses.length}`, {
+            seedId: seed.id,
+            addressIndex: i,
+            toAddress: address,
+          })
 
-      logger.info('Creating proof record', {
-        userId: user.id,
-        seedId: seed.id,
-        resourceId: result.id,
-        lobUrl: result.url,
-        thumbnailUrl: result.thumbnail_url,
-        thumbnailUrlLength: result.thumbnail_url?.length || 0,
-        status: 'created',
-      })
+          const result = await LobClient.createPostcard(user, {
+            toAddress: address,
+            frontTemplateId: seed.frontTemplateId,
+            backTemplateId: seed.backTemplateId,
+          })
 
-      const proof = await Proof.create({
-        userId: user.id,
-        seedId: seed.id,
-        resourceId: result.id,
-        lobUrl: result.url,
-        thumbnailUrl: result.thumbnail_url,
-        status: 'created',
-      })
+          logger.info('Postcard created successfully', {
+            resourceId: result.id,
+            lobUrl: result.url,
+            thumbnailUrl: result.thumbnail_url,
+            thumbnailUrlLength: result.thumbnail_url?.length || 0,
+            seedId: seed.id,
+            addressIndex: i,
+          })
 
-      logger.info('Proof created successfully', {
-        proofId: proof.id,
-        resourceId: result.id,
-        seedId: seed.id,
-      })
+          logger.info('Creating proof record', {
+            userId: user.id,
+            seedId: seed.id,
+            resourceId: result.id,
+            lobUrl: result.url,
+            thumbnailUrl: result.thumbnail_url,
+            thumbnailUrlLength: result.thumbnail_url?.length || 0,
+            status: 'created',
+            addressIndex: i,
+          })
 
-      session.flash('success', 'Seed run successfully! Postcard created.')
+          const proof = await Proof.create({
+            userId: user.id,
+            seedId: seed.id,
+            resourceId: result.id,
+            lobUrl: result.url,
+            thumbnailUrl: result.thumbnail_url,
+            status: 'created',
+          })
+
+          logger.info('Proof created successfully', {
+            proofId: proof.id,
+            resourceId: result.id,
+            seedId: seed.id,
+            addressIndex: i,
+          })
+
+          createdProofs.push(proof)
+        } catch (error: any) {
+          logger.error(`Error creating postcard for address ${i + 1}`, {
+            seedId: seed.id,
+            addressIndex: i,
+            error: error.message,
+            stack: error.stack,
+          })
+          errors.push({ addressIndex: i, error: error.message })
+        }
+      }
+
+      if (errors.length > 0) {
+        const successCount = createdProofs.length
+        const errorCount = errors.length
+        if (successCount > 0) {
+          session.flash(
+            'success',
+            `Seed run partially successful! ${successCount} postcard(s) created, ${errorCount} failed.`
+          )
+        } else {
+          session.flash('errors', {
+            general: `Failed to create postcards. ${errorCount} error(s) occurred.`,
+          })
+        }
+      } else {
+        session.flash(
+          'success',
+          `Seed run successfully! ${createdProofs.length} postcard(s) created.`
+        )
+      }
       return response.redirect().toRoute('seeds.show', { id: seed.id })
     } catch (error: any) {
       // Enhanced error logging

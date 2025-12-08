@@ -28,7 +28,7 @@ export default class Seed extends BaseModel {
     prepare: (value: any) => JSON.stringify(value),
     consume: (value: any) => (typeof value === 'string' ? JSON.parse(value) : value),
   })
-  declare toAddress: {
+  declare toAddress: Array<{
     name?: string
     company?: string
     address_line1: string
@@ -40,7 +40,7 @@ export default class Seed extends BaseModel {
     phone?: string
     email?: string
     description?: string
-  }
+  }>
 
   @column()
   declare status: 'active' | 'paused'

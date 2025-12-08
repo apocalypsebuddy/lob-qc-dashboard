@@ -61,6 +61,7 @@
                 type="text"
                 id="name"
                 name="name"
+                autocomplete="off"
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
@@ -89,124 +90,432 @@
             </div>
 
             <div class="border-t pt-4 mt-6">
-              <h3 class="text-lg font-medium mb-4">To Address</h3>
+              <h3 class="text-lg font-medium mb-4">To Addresses</h3>
 
-              <div class="mb-4">
-                <label for="toName" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input
-                  type="text"
-                  id="toName"
-                  name="toName"
-                  maxlength="40"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
+              <div id="addressesContainer">
+                <!-- Address fields will be dynamically added here -->
               </div>
 
-              <div class="mb-4">
-                <label for="company" class="block text-sm font-medium text-gray-700 mb-1">Company</label>
-                <input
-                  type="text"
-                  id="company"
-                  name="company"
-                  maxlength="40"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div class="mb-4">
-                <label for="addressLine1" class="block text-sm font-medium text-gray-700 mb-1">Address Line 1 *</label>
-                <input
-                  type="text"
-                  id="addressLine1"
-                  name="addressLine1"
-                  required
-                  maxlength="64"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div class="mb-4">
-                <label for="addressLine2" class="block text-sm font-medium text-gray-700 mb-1">Address Line 2</label>
-                <input
-                  type="text"
-                  id="addressLine2"
-                  name="addressLine2"
-                  maxlength="64"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div class="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label for="addressCity" class="block text-sm font-medium text-gray-700 mb-1">City *</label>
-                  <input
-                    type="text"
-                    id="addressCity"
-                    name="addressCity"
-                    required
-                    maxlength="200"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label for="addressState" class="block text-sm font-medium text-gray-700 mb-1">State (2 letters) *</label>
-                  <input
-                    type="text"
-                    id="addressState"
-                    name="addressState"
-                    required
-                    pattern="[A-Z]{2}"
-                    maxlength="2"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div class="mb-4">
-                <label for="addressZip" class="block text-sm font-medium text-gray-700 mb-1">ZIP Code *</label>
-                <input
-                  type="text"
-                  id="addressZip"
-                  name="addressZip"
-                  required
-                  pattern="\d{5}(-\d{4})?"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div class="mb-4">
-                <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <input
-                  type="text"
-                  id="phone"
-                  name="phone"
-                  maxlength="40"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div class="mb-4">
-                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  maxlength="100"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div class="mb-4">
-                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <input
-                  type="text"
-                  id="description"
-                  name="description"
-                  maxlength="255"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
+              <div class="mt-4">
+                <button
+                  type="button"
+                  id="addAddressBtn"
+                  class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md text-sm"
+                >
+                  + Add Address
+                </button>
               </div>
             </div>
+
+            <script>
+              let addressIndex = 0
+              let expandedIndex = 0
+
+              function getAddressSummary(index) {
+                // Get from the address group's input fields (whether visible or hidden)
+                const addressGroup = document.querySelector(`.address-group[data-index="${index}"]`)
+                let data = {}
+
+                if (addressGroup) {
+                  addressGroup.querySelectorAll('.address-input').forEach(input => {
+                    const nameMatch = input.name.match(/\[([^\]]+)\]$/)
+                    if (nameMatch) {
+                      data[nameMatch[1]] = input.value
+                    }
+                  })
+                }
+
+                const parts = []
+                if (data.toName) parts.push(data.toName)
+                if (data.addressLine1) parts.push(data.addressLine1)
+                if (data.addressCity && data.addressState && data.addressZip) {
+                  parts.push(`${data.addressCity}, ${data.addressState} ${data.addressZip}`)
+                }
+                return parts.length > 0 ? parts.join(' - ') : `Address ${index + 1}`
+              }
+
+              function createAddressSummary(index) {
+                const summaryDiv = document.createElement('div')
+                summaryDiv.className = 'address-summary border border-gray-200 rounded-lg p-3 mb-4 bg-gray-50 cursor-pointer hover:bg-gray-100'
+                summaryDiv.dataset.index = index
+                summaryDiv.dataset.type = 'summary'
+
+                const summary = getAddressSummary(index)
+                summaryDiv.innerHTML = `
+                  <div class="flex justify-between items-center">
+                    <div class="flex-1">
+                      <div class="text-sm font-medium text-gray-700">Address ${index + 1}</div>
+                      <div class="text-xs text-gray-500 mt-1">${summary}</div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <button type="button" class="expand-address-btn text-blue-600 hover:text-blue-800 text-sm font-medium">
+                        Edit
+                      </button>
+                      ${index > 0 ? '<button type="button" class="remove-address-btn text-red-600 hover:text-red-800 text-sm font-medium">Remove</button>' : ''}
+                    </div>
+                  </div>
+                `
+
+                summaryDiv.querySelector('.expand-address-btn').addEventListener('click', () => {
+                  expandAddress(index)
+                })
+
+                const removeBtn = summaryDiv.querySelector('.remove-address-btn')
+                if (removeBtn) {
+                  removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation()
+                    removeAddress(index)
+                  })
+                }
+
+                return summaryDiv
+              }
+
+              function createAddressFields(index) {
+                const addressDiv = document.createElement('div')
+                addressDiv.className = 'address-group border border-gray-200 rounded-lg p-4 mb-4 bg-white'
+                addressDiv.dataset.index = index
+                addressDiv.dataset.type = 'expanded'
+
+                addressDiv.innerHTML = `
+                  <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-md font-medium text-gray-700">Address ${index + 1}</h4>
+                    <div class="flex items-center space-x-2">
+                      <button type="button" class="collapse-address-btn text-gray-600 hover:text-gray-800 text-sm font-medium">
+                        Collapse
+                      </button>
+                      ${index > 0 ? '<button type="button" class="remove-address-btn text-red-600 hover:text-red-800 text-sm font-medium">Remove</button>' : ''}
+                    </div>
+                  </div>
+
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <input
+                      type="text"
+                      name="addresses[${index}][toName]"
+                      autocomplete="name"
+                      maxlength="40"
+                      class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                    <input
+                      type="text"
+                      name="addresses[${index}][company]"
+                      autocomplete="organization"
+                      maxlength="40"
+                      class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Address Line 1 *</label>
+                    <input
+                      type="text"
+                      name="addresses[${index}][addressLine1]"
+                      autocomplete="street-address"
+                      required
+                      maxlength="64"
+                      class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Address Line 2</label>
+                    <input
+                      type="text"
+                      name="addresses[${index}][addressLine2]"
+                      autocomplete="address-line2"
+                      maxlength="64"
+                      class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                      <input
+                        type="text"
+                        name="addresses[${index}][addressCity]"
+                        autocomplete="address-level2"
+                        required
+                        maxlength="200"
+                        class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">State (2 letters) *</label>
+                      <input
+                        type="text"
+                        name="addresses[${index}][addressState]"
+                        autocomplete="address-level1"
+                        required
+                        pattern="[A-Z]{2}"
+                        maxlength="2"
+                        class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">ZIP Code *</label>
+                    <input
+                      type="text"
+                      name="addresses[${index}][addressZip]"
+                      autocomplete="postal-code"
+                      required
+                      pattern="\\d{5}(-\\d{4})?"
+                      class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <input
+                      type="tel"
+                      name="addresses[${index}][phone]"
+                      autocomplete="tel"
+                      maxlength="40"
+                      class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input
+                      type="email"
+                      name="addresses[${index}][email]"
+                      autocomplete="email"
+                      maxlength="100"
+                      class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <input
+                      type="text"
+                      name="addresses[${index}][description]"
+                      autocomplete="off"
+                      maxlength="255"
+                      class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                `
+
+                addressDiv.querySelector('.collapse-address-btn').addEventListener('click', () => {
+                  collapseAddress(index)
+                })
+
+                const removeBtn = addressDiv.querySelector('.remove-address-btn')
+                if (removeBtn) {
+                  removeBtn.addEventListener('click', () => {
+                    removeAddress(index)
+                  })
+                }
+
+                return addressDiv
+              }
+
+              function collapseAddress(index) {
+                const expanded = document.querySelector(`.address-group[data-index="${index}"][data-type="expanded"]`)
+                if (!expanded) return
+
+                // Hide the form fields but keep them in the DOM for form submission
+                const formFields = expanded.querySelectorAll('.address-input')
+                formFields.forEach(field => {
+                  field.style.display = 'none'
+                })
+
+                // Hide all labels
+                const labels = expanded.querySelectorAll('label')
+                labels.forEach(label => {
+                  label.style.display = 'none'
+                })
+
+                // Hide the form content divs (everything except header and buttons)
+                const formContent = expanded.querySelectorAll('.mb-4, .grid')
+                formContent.forEach(el => {
+                  // Don't hide the header div
+                  if (!el.closest('.flex.justify-between')) {
+                    el.style.display = 'none'
+                  }
+                })
+
+                // Hide the header buttons (Collapse button)
+                const headerButtons = expanded.querySelector('.flex.items-center.space-x-2')
+                if (headerButtons) {
+                  headerButtons.style.display = 'none'
+                }
+
+                // Create and insert summary after the header
+                const summary = createAddressSummary(index)
+                const header = expanded.querySelector('.flex.justify-between')
+                if (header && header.nextSibling) {
+                  expanded.insertBefore(summary, header.nextSibling)
+                } else {
+                  expanded.appendChild(summary)
+                }
+
+                // Add a class to mark as collapsed
+                expanded.classList.add('collapsed')
+                expanded.dataset.type = 'collapsed'
+
+                if (expandedIndex === index) {
+                  expandedIndex = -1
+                }
+              }
+
+              function expandAddress(index) {
+                // Collapse currently expanded address if any
+                if (expandedIndex >= 0 && expandedIndex !== index) {
+                  collapseAddress(expandedIndex)
+                }
+
+                const addressGroup = document.querySelector(`.address-group[data-index="${index}"]`)
+                if (!addressGroup) return
+
+                // Remove summary if it exists
+                const summary = addressGroup.querySelector(`.address-summary[data-index="${index}"]`)
+                if (summary) {
+                  summary.remove()
+                }
+
+                // Show all form fields
+                const formFields = addressGroup.querySelectorAll('.address-input')
+                formFields.forEach(field => {
+                  field.style.display = ''
+                })
+
+                // Show all labels
+                const labels = addressGroup.querySelectorAll('label')
+                labels.forEach(label => {
+                  label.style.display = ''
+                })
+
+                // Show form content
+                const formContent = addressGroup.querySelectorAll('.mb-4, .grid')
+                formContent.forEach(el => {
+                  el.style.display = ''
+                })
+
+                // Show header buttons
+                const headerButtons = addressGroup.querySelector('.flex.items-center.space-x-2')
+                if (headerButtons) {
+                  headerButtons.style.display = 'flex'
+                }
+
+                // Update state
+                addressGroup.classList.remove('collapsed')
+                addressGroup.dataset.type = 'expanded'
+                expandedIndex = index
+              }
+
+              function removeAddress(index) {
+                const element = document.querySelector(`.address-group[data-index="${index}"]`)
+                if (element && index > 0) {
+                  element.remove()
+                  updateAddressNumbers()
+                  if (expandedIndex === index) {
+                    expandedIndex = -1
+                  }
+                }
+              }
+
+              function updateAddressNumbers() {
+                const container = document.getElementById('addressesContainer')
+                // Get all address groups (not summaries, as summaries are children of groups)
+                const addressGroups = Array.from(container.querySelectorAll('.address-group[data-index]'))
+                  .sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index))
+
+                addressGroups.forEach((group, newIndex) => {
+                  const oldIndex = parseInt(group.dataset.index)
+                  if (oldIndex !== newIndex) {
+                    // Update data-index on the group
+                    group.dataset.index = newIndex
+
+                    // Update input names in the group
+                    group.querySelectorAll('.address-input').forEach(input => {
+                      const nameMatch = input.name.match(/^addresses\[\d+\]\[(.+)\]$/)
+                      if (nameMatch) {
+                        input.name = `addresses[${newIndex}][${nameMatch[1]}]`
+                      }
+                    })
+
+                    // Update display text in header
+                    const header = group.querySelector('h4')
+                    if (header) {
+                      header.textContent = `Address ${newIndex + 1}`
+                    }
+
+                    // Update summary if it exists
+                    const summary = group.querySelector(`.address-summary[data-index="${oldIndex}"]`)
+                    if (summary) {
+                      summary.dataset.index = newIndex
+                      const summaryHeader = summary.querySelector('.text-sm.font-medium')
+                      if (summaryHeader) {
+                        summaryHeader.textContent = `Address ${newIndex + 1}`
+                      }
+                    }
+                  } else {
+                    // Even if index hasn't changed, update summary header if it exists
+                    const summary = group.querySelector('.address-summary')
+                    if (summary) {
+                      const summaryHeader = summary.querySelector('.text-sm.font-medium')
+                      if (summaryHeader) {
+                        summaryHeader.textContent = `Address ${newIndex + 1}`
+                      }
+                    }
+                  }
+                })
+
+                // Update remove button visibility
+                addressGroups.forEach((group, index) => {
+                  const removeBtns = group.querySelectorAll('.remove-address-btn')
+                  removeBtns.forEach(btn => {
+                    btn.style.display = index === 0 ? 'none' : 'block'
+                  })
+                })
+              }
+
+              function updateSummaryIfCollapsed(index) {
+                const summary = document.querySelector(`.address-summary[data-index="${index}"]`)
+                if (summary) {
+                  // Preserve stored values
+                  const storedValues = summary.dataset.values
+                  const newSummary = createAddressSummary(index)
+                  if (storedValues) {
+                    newSummary.dataset.values = storedValues
+                  }
+                  summary.replaceWith(newSummary)
+                }
+              }
+
+              // Initialize with first address expanded
+              document.addEventListener('DOMContentLoaded', () => {
+                const container = document.getElementById('addressesContainer')
+                const firstAddress = createAddressFields(0)
+                container.appendChild(firstAddress)
+                addressIndex = 1
+                expandedIndex = 0
+
+                // Add address button handler
+                document.getElementById('addAddressBtn').addEventListener('click', () => {
+                  // Collapse currently expanded address
+                  if (expandedIndex >= 0) {
+                    collapseAddress(expandedIndex)
+                  }
+
+                  // Create new expanded address
+                  const newAddress = createAddressFields(addressIndex)
+                  container.appendChild(newAddress)
+                  expandedIndex = addressIndex
+                  addressIndex++
+                })
+              })
+            </script>
 
             <div class="flex justify-end space-x-4 mt-6">
               <a
@@ -225,3 +534,4 @@
     </main>
   </body>
 </html>
+

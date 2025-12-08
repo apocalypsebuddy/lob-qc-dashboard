@@ -54,7 +54,7 @@
             <p>{{ errorMessage }}</p>
           </div>
         @endif
-        
+
         @if(successMessage)
           <div class="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
             <p>{{ successMessage }}</p>
@@ -76,7 +76,7 @@
 
         <div class="bg-white shadow rounded-lg p-6 mb-6">
           <h2 class="text-xl font-semibold mb-4">Seed Details</h2>
-          <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-6">
             <div>
               <dt class="text-sm font-medium text-gray-500">Front Template ID</dt>
               <dd class="mt-1 text-sm text-gray-900">{{ seed.frontTemplateId }}</dd>
@@ -98,6 +98,50 @@
               <dd class="mt-1 text-sm text-gray-900">{{ seed.cadence }}</dd>
             </div>
           </dl>
+
+          <div class="border-t pt-4 mt-4">
+            <dt class="text-sm font-medium text-gray-500 mb-3">Recipient Addresses</dt>
+            <dd class="mt-1">
+              <div class="space-y-3">
+                @each(address in seed.addresses)
+                  <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div class="flex justify-between items-start">
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900 mb-1">
+                          Address {{ address.index }}
+                        </div>
+                        <div class="text-sm text-gray-600">
+                          @if(address.name && address.name !== 'N/A')
+                            <div>{{ address.name }}</div>
+                          @endif
+                          @if(address.company)
+                            <div>{{ address.company }}</div>
+                          @endif
+                          <div>{{ address.address_line1 }}</div>
+                          @if(address.address_line2)
+                            <div>{{ address.address_line2 }}</div>
+                          @endif
+                          <div>{{ address.address_city }}, {{ address.address_state }} {{ address.address_zip }}</div>
+                          @if(address.address_country && address.address_country !== 'US')
+                            <div>{{ address.address_country }}</div>
+                          @endif
+                          @if(address.phone)
+                            <div class="mt-1 text-gray-500">Phone: {{ address.phone }}</div>
+                          @endif
+                          @if(address.email)
+                            <div class="text-gray-500">Email: {{ address.email }}</div>
+                          @endif
+                          @if(address.description)
+                            <div class="mt-1 text-gray-500 italic">{{ address.description }}</div>
+                          @endif
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                @endeach
+              </div>
+            </dd>
+          </div>
         </div>
 
         <div class="bg-white shadow rounded-lg overflow-hidden">
@@ -109,7 +153,7 @@
             const proofsBase64 = '{{ seed.proofsBase64 }}';
             const proofs = JSON.parse(atob(proofsBase64));
             const container = document.getElementById('proofs-content');
-            
+
             if (!proofs || proofs.length === 0) {
               container.innerHTML = '<div class="p-6 text-center text-gray-500">No proofs yet. Run this seed to create a proof.</div>';
             } else {
@@ -124,7 +168,7 @@
                   </td>
                 </tr>
               `).join('');
-              
+
               container.innerHTML = `
                 <table class="min-w-full divide-y divide-gray-200">
                   <thead class="bg-gray-50">
