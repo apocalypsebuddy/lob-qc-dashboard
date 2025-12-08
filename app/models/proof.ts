@@ -23,6 +23,12 @@ export default class Proof extends BaseModel {
   @column({ columnName: 'thumbnail_url' })
   declare thumbnailUrl: string
 
+  @column({ columnName: 'front_thumbnail_url' })
+  declare frontThumbnailUrl: string | null
+
+  @column({ columnName: 'back_thumbnail_url' })
+  declare backThumbnailUrl: string | null
+
   @column()
   declare status:
     | 'created'
@@ -34,6 +40,9 @@ export default class Proof extends BaseModel {
 
   @column({ columnName: 'tracking_number' })
   declare trackingNumber: string | null
+
+  @column.dateTime({ columnName: 'mailed_at' })
+  declare mailedAt: DateTime | null
 
   @column.dateTime({ columnName: 'delivered_at' })
   declare deliveredAt: DateTime | null

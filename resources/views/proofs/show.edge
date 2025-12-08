@@ -46,10 +46,12 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div class="bg-white shadow rounded-lg p-6">
             <h2 class="text-xl font-semibold mb-4">Proof Information</h2>
-            <dl class="space-y-4">
+            <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               <div>
                 <dt class="text-sm font-medium text-gray-500">Seed</dt>
-                <dd class="mt-1 text-sm text-gray-900">{{ proof.seedName }}</dd>
+                <dd class="mt-1 text-sm text-gray-900">
+                  <a href="{{ proof.seedShowUrl }}" class="text-blue-600 hover:text-blue-800 underline">{{ proof.seedName }}</a>
+                </dd>
               </div>
               <div>
                 <dt class="text-sm font-medium text-gray-500">Status</dt>
@@ -57,14 +59,22 @@
                   <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">{{ proof.status }}</span>
                 </dd>
               </div>
-              <div>
-                <dt class="text-sm font-medium text-gray-500">Resource ID</dt>
-                <dd class="mt-1 text-sm text-gray-900 font-mono">{{ proof.resourceId }}</dd>
-              </div>
+              <div id="resource-id"></div>
               <div id="tracking-number"></div>
               <div id="delivered-at"></div>
+              <div id="lob-details"></div>
             </dl>
             <script>
+              if (proof.resourceId) {
+                document.getElementById('resource-id').innerHTML = `
+                  <div>
+                    <dt class="text-sm font-medium text-gray-500">Resource ID</dt>
+                    <dd class="mt-1 text-sm text-gray-900 font-mono">
+                      <a href="https://dashboard.lob.com/postcards/${proof.resourceId}" target="_blank" class="text-blue-600 hover:text-blue-800">${proof.resourceId}</a>
+                    </dd>
+                  </div>
+                `;
+              }
               if (proof.trackingNumber) {
                 document.getElementById('tracking-number').innerHTML = `
                   <div>
@@ -81,17 +91,83 @@
                   </div>
                 `;
               }
+              if (proof.lobDetails) {
+                const details = proof.lobDetails;
+                let detailsHtml = '';
+                if (details.size) {
+                  detailsHtml += `
+                    <div>
+                      <dt class="text-sm font-medium text-gray-500">Size</dt>
+                      <dd class="mt-1 text-sm text-gray-900">${details.size}</dd>
+                    </div>
+                  `;
+                }
+                if (details.mailType) {
+                  detailsHtml += `
+                    <div>
+                      <dt class="text-sm font-medium text-gray-500">Mail Type</dt>
+                      <dd class="mt-1 text-sm text-gray-900">${details.mailType}</dd>
+                    </div>
+                  `;
+                }
+                if (details.dateCreated) {
+                  detailsHtml += `
+                    <div>
+                      <dt class="text-sm font-medium text-gray-500">Date Created</dt>
+                      <dd class="mt-1 text-sm text-gray-900">${details.dateCreated}</dd>
+                    </div>
+                  `;
+                }
+                if (details.sendDate) {
+                  detailsHtml += `
+                    <div>
+                      <dt class="text-sm font-medium text-gray-500">Send Date</dt>
+                      <dd class="mt-1 text-sm text-gray-900">${details.sendDate}</dd>
+                    </div>
+                  `;
+                }
+                if (details.expectedDeliveryDate) {
+                  detailsHtml += `
+                    <div>
+                      <dt class="text-sm font-medium text-gray-500">Expected Delivery Date Range</dt>
+                      <dd class="mt-1 text-sm text-gray-900">${details.expectedDeliveryDate}</dd>
+                    </div>
+                  `;
+                }
+                if (detailsHtml) {
+                  document.getElementById('lob-details').innerHTML = detailsHtml;
+                }
+              }
             </script>
           </div>
 
           <div class="bg-white shadow rounded-lg p-6">
-            <h2 class="text-xl font-semibold mb-4">Lob Rendering</h2>
-            <div id="thumbnail"></div>
-            <script>
-              if (proof.thumbnailUrl) {
-                document.getElementById('thumbnail').innerHTML = `<img src="${proof.thumbnailUrl}" alt="Postcard thumbnail" class="w-full rounded-lg shadow-sm" />`;
-              }
-            </script>
+            <h2 class="text-xl font-semibold mb-4">Lob Rendered Proofs</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h3 class="text-sm font-medium text-gray-700 mb-2">Front</h3>
+                <div id="front-thumbnail"></div>
+                <script>
+                  if (proof.frontThumbnailUrl) {
+                    document.getElementById('front-thumbnail').innerHTML = `<img src="${proof.frontThumbnailUrl}" alt="Postcard front thumbnail" class="w-full rounded-lg shadow-sm" />`;
+                  } else if (proof.thumbnailUrl) {
+                    // Fallback to old thumbnailUrl for backward compatibility
+                    document.getElementById('front-thumbnail').innerHTML = `<img src="${proof.thumbnailUrl}" alt="Postcard thumbnail" class="w-full rounded-lg shadow-sm" />`;
+                  }
+                </script>
+              </div>
+              <div>
+                <h3 class="text-sm font-medium text-gray-700 mb-2">Back</h3>
+                <div id="back-thumbnail"></div>
+                <script>
+                  if (proof.backThumbnailUrl) {
+                    document.getElementById('back-thumbnail').innerHTML = `<img src="${proof.backThumbnailUrl}" alt="Postcard back thumbnail" class="w-full rounded-lg shadow-sm" />`;
+                  } else {
+                    document.getElementById('back-thumbnail').innerHTML = `<p class="text-sm text-gray-500 italic">No back thumbnail available</p>`;
+                  }
+                </script>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -108,7 +184,7 @@
         </script>
 
         <div class="mt-6 bg-white shadow rounded-lg p-6">
-          <h2 class="text-xl font-semibold mb-4">Upload Live Proof</h2>
+          <h2 class="text-xl font-semibold mb-4">Live Proofs</h2>
           <a href="{{ proof.uploadUrl }}" class="inline-block bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md">
             Capture / Upload Live Proof
           </a>

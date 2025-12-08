@@ -6,6 +6,8 @@ import { updateProofValidator } from '#validators/proof'
 import { unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import LobClient from '#services/lob_client'
+import { DateTime } from 'luxon'
 
 export default class ProofsController {
   async index({ view, auth, request }: HttpContext) {
@@ -20,6 +22,7 @@ export default class ProofsController {
       seedName: proof.seed.name,
       status: proof.status,
       createdAt: proof.createdAt.toFormat('MMM dd, yyyy'),
+      mailedAt: proof.mailedAt ? proof.mailedAt.toFormat('MMM dd, yyyy') : null,
       deliveredAt: proof.deliveredAt ? proof.deliveredAt.toFormat('MMM dd, yyyy') : null,
       showUrl: router.makeUrl('proofs.show', { id: proof.id }),
     }))
@@ -41,9 +44,60 @@ export default class ProofsController {
       .preload('seed')
       .firstOrFail()
 
+    // Fetch additional details from Lob API
+    let lobDetails = null
+    let frontThumbnailUrl = proof.frontThumbnailUrl
+    let backThumbnailUrl = proof.backThumbnailUrl
+
+    try {
+      const lobPostcard = await LobClient.getPostcard(user, proof.resourceId)
+      lobDetails = {
+        size: lobPostcard.size || null,
+        mailType: lobPostcard.mail_type || null,
+        dateCreated: lobPostcard.date_created
+          ? DateTime.fromISO(lobPostcard.date_created).toFormat('MMM dd, yyyy HH:mm')
+          : null,
+        sendDate: lobPostcard.send_date
+          ? DateTime.fromISO(lobPostcard.send_date).toFormat('MMM dd, yyyy HH:mm')
+          : null,
+        expectedDeliveryDate: lobPostcard.expected_delivery_date || null,
+      }
+
+      // Extract thumbnail URLs from API if not available in database
+      if (!frontThumbnailUrl && lobPostcard.thumbnails && lobPostcard.thumbnails.length > 0) {
+        const frontThumbnail = lobPostcard.thumbnails[0]
+        frontThumbnailUrl =
+          frontThumbnail.large || frontThumbnail.medium || frontThumbnail.small || null
+        logger.info('Fetched front thumbnail from Lob API', {
+          proofId: proof.id,
+          frontThumbnailUrl,
+        })
+      }
+
+      if (!backThumbnailUrl && lobPostcard.thumbnails && lobPostcard.thumbnails.length > 1) {
+        const backThumbnail = lobPostcard.thumbnails[1]
+        backThumbnailUrl =
+          backThumbnail.large || backThumbnail.medium || backThumbnail.small || null
+        logger.info('Fetched back thumbnail from Lob API', {
+          proofId: proof.id,
+          backThumbnailUrl,
+        })
+      }
+    } catch (error: any) {
+      logger.error('Failed to fetch Lob postcard details', {
+        proofId: proof.id,
+        resourceId: proof.resourceId,
+        error: error.message,
+        errorStack: error.stack,
+      })
+      // Continue without Lob details - they'll just be null
+    }
+
     const proofData = {
       id: proof.id,
+      seedId: proof.seedId,
       seedName: proof.seed.name,
+      seedShowUrl: router.makeUrl('seeds.show', { id: proof.seedId }),
       status: proof.status,
       resourceId: proof.resourceId,
       trackingNumber: proof.trackingNumber,
@@ -51,12 +105,15 @@ export default class ProofsController {
       mailedAt: proof.mailedAt ? proof.mailedAt.toFormat('MMM dd, yyyy HH:mm') : null,
       deliveredAt: proof.deliveredAt ? proof.deliveredAt.toFormat('MMM dd, yyyy HH:mm') : null,
       thumbnailUrl: proof.thumbnailUrl,
+      frontThumbnailUrl,
+      backThumbnailUrl,
       liveProofUrl: proof.liveProofUrl,
       qualityRating: proof.qualityRating,
       printerVendor: proof.printerVendor,
       notes: proof.notes,
       uploadUrl: router.makeUrl('proofs.upload', { id: proof.id }),
       updateUrl: router.makeUrl('proofs.update', { id: proof.id }),
+      lobDetails,
     }
 
     // Encode proof data as base64 to avoid HTML escaping issues
@@ -73,7 +130,10 @@ export default class ProofsController {
       const user = auth.getUserOrFail()
       logger.info('Updating proof review', { proofId: params.id, userId: user.id })
 
-      const proof = await Proof.query().where('id', params.id).where('user_id', user.id).firstOrFail()
+      const proof = await Proof.query()
+        .where('id', params.id)
+        .where('user_id', user.id)
+        .firstOrFail()
 
       const data = await request.validateUsing(updateProofValidator)
       logger.info('Proof review form validated', {
@@ -127,7 +187,10 @@ export default class ProofsController {
       const user = auth.getUserOrFail()
       logger.info('Uploading live proof', { proofId: params.id, userId: user.id })
 
-      const proof = await Proof.query().where('id', params.id).where('user_id', user.id).firstOrFail()
+      const proof = await Proof.query()
+        .where('id', params.id)
+        .where('user_id', user.id)
+        .firstOrFail()
       logger.info('Proof found for upload', {
         proofId: proof.id,
         resourceId: proof.resourceId,

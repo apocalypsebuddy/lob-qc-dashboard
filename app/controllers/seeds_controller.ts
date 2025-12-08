@@ -259,6 +259,8 @@ export default class SeedsController {
             lobUrl: result.url,
             thumbnailUrl: result.thumbnail_url,
             thumbnailUrlLength: result.thumbnail_url?.length || 0,
+            frontThumbnailUrl: result.front_thumbnail_url,
+            backThumbnailUrl: result.back_thumbnail_url,
             seedId: seed.id,
             addressIndex: i,
           })
@@ -270,6 +272,8 @@ export default class SeedsController {
             lobUrl: result.url,
             thumbnailUrl: result.thumbnail_url,
             thumbnailUrlLength: result.thumbnail_url?.length || 0,
+            frontThumbnailUrl: result.front_thumbnail_url,
+            backThumbnailUrl: result.back_thumbnail_url,
             status: 'created',
             addressIndex: i,
           })
@@ -280,6 +284,8 @@ export default class SeedsController {
             resourceId: result.id,
             lobUrl: result.url,
             thumbnailUrl: result.thumbnail_url,
+            frontThumbnailUrl: result.front_thumbnail_url,
+            backThumbnailUrl: result.back_thumbnail_url,
             status: 'created',
           })
 

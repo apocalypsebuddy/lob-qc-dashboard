@@ -42,6 +42,8 @@ interface LobPostcardResponse {
   back_template_id: string
   front_template_version_id: string
   back_template_version_id: string
+  size?: string
+  mail_type?: string
 }
 
 export default class LobClient {
@@ -64,7 +66,7 @@ export default class LobClient {
   static async createPostcard(
     user: User,
     params: CreatePostcardParams
-  ): Promise<{ id: string; url: string; thumbnail_url: string }> {
+  ): Promise<{ id: string; url: string; thumbnail_url: string; front_thumbnail_url: string; back_thumbnail_url: string | null }> {
     if (!user.lobApiKey) {
       throw new Error('User does not have a Lob API key configured')
     }
@@ -169,41 +171,158 @@ export default class LobClient {
         : null,
     })
 
-    // Extract thumbnail URL from thumbnails array (use medium from first thumbnail)
-    let thumbnailUrl = ''
+    // Extract thumbnail URLs from thumbnails array
+    // First object is front thumbnails, second is back thumbnails
+    // Use "large" size for each as requested
+    let thumbnailUrl = '' // Keep for backward compatibility
+    let frontThumbnailUrl = ''
+    let backThumbnailUrl = ''
+
     if (data.thumbnails && data.thumbnails.length > 0) {
-      thumbnailUrl =
-        data.thumbnails[0].medium || data.thumbnails[0].large || data.thumbnails[0].small
-      logger.info('Extracted thumbnail URL', {
-        thumbnailUrl,
+      // Extract front thumbnail (first object) - use large size
+      const frontThumbnail = data.thumbnails[0]
+      frontThumbnailUrl = frontThumbnail.large || frontThumbnail.medium || frontThumbnail.small || ''
+
+      // For backward compatibility, use front thumbnail as the main thumbnail
+      thumbnailUrl = frontThumbnailUrl
+
+      logger.info('Extracted front thumbnail URL', {
+        frontThumbnailUrl,
         availableSizes: {
-          small: data.thumbnails[0].small,
-          medium: data.thumbnails[0].medium,
-          large: data.thumbnails[0].large,
+          small: frontThumbnail.small,
+          medium: frontThumbnail.medium,
+          large: frontThumbnail.large,
         },
       })
+
+      // Extract back thumbnail (second object) if available - use large size
+      if (data.thumbnails.length > 1) {
+        const backThumbnail = data.thumbnails[1]
+        backThumbnailUrl = backThumbnail.large || backThumbnail.medium || backThumbnail.small || ''
+
+        logger.info('Extracted back thumbnail URL', {
+          backThumbnailUrl,
+          availableSizes: {
+            small: backThumbnail.small,
+            medium: backThumbnail.medium,
+            large: backThumbnail.large,
+          },
+        })
+      } else {
+        logger.warn('Only one thumbnail found in Lob API response (expected front and back)', {
+          responseId: data.id,
+          thumbnailsCount: data.thumbnails.length,
+        })
+      }
     } else {
       logger.warn('No thumbnails found in Lob API response', {
         responseId: data.id,
         responseKeys: Object.keys(data),
       })
-      // Fallback: use a placeholder or empty string
-      // Note: This might cause issues if thumbnail_url is required in the database
-      thumbnailUrl = ''
     }
 
-    if (!thumbnailUrl) {
-      logger.error('Failed to extract thumbnail URL from Lob response', {
+    if (!frontThumbnailUrl) {
+      logger.error('Failed to extract front thumbnail URL from Lob response', {
         responseId: data.id,
         thumbnails: data.thumbnails,
       })
-      throw new Error('No thumbnail URL available in Lob API response')
+      throw new Error('No front thumbnail URL available in Lob API response')
     }
 
     return {
       id: data.id,
       url: data.url,
-      thumbnail_url: thumbnailUrl,
+      thumbnail_url: thumbnailUrl, // Keep for backward compatibility
+      front_thumbnail_url: frontThumbnailUrl,
+      back_thumbnail_url: backThumbnailUrl || null,
     }
+  }
+
+  static async getPostcard(user: User, resourceId: string): Promise<LobPostcardResponse> {
+    if (!user.lobApiKey) {
+      throw new Error('User does not have a Lob API key configured')
+    }
+
+    const authHeader = Buffer.from(`${user.lobApiKey}:`).toString('base64')
+    const fetchModule = await import('node-fetch')
+    const fetch = fetchModule.default
+
+    const url = `https://api.lob.com/v1/postcards/${resourceId}`
+    const requestHeaders = {
+      'Authorization': `Basic ${authHeader}`,
+      'Content-Type': 'application/json',
+    }
+
+    logger.info('Fetching postcard details from Lob API', {
+      url,
+      method: 'GET',
+      resourceId,
+      userId: user.id,
+    })
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: requestHeaders,
+    })
+
+    logger.info('Lob API GET response received', {
+      url,
+      status: response.status,
+      statusText: response.statusText,
+      resourceId,
+      headers: Object.fromEntries(response.headers.entries()),
+    })
+
+    const responseText = await response.text()
+    logger.info('Lob API GET response body', {
+      url,
+      status: response.status,
+      resourceId,
+      responseText,
+      responseTextLength: responseText.length,
+    })
+
+    if (!response.ok) {
+      logger.error('Lob API error response', {
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        errorText: responseText,
+        resourceId,
+        responseHeaders: Object.fromEntries(response.headers.entries()),
+      })
+      throw new Error(`Lob API error: ${response.status} - ${responseText}`)
+    }
+
+    let data: LobPostcardResponse
+    try {
+      data = JSON.parse(responseText) as LobPostcardResponse
+      logger.info('Lob API response parsed successfully', {
+        resourceId: data.id,
+        responseKeys: Object.keys(data),
+      })
+    } catch (parseError: any) {
+      logger.error('Failed to parse Lob API response', {
+        url,
+        status: response.status,
+        resourceId,
+        responseText,
+        parseError: parseError.message,
+        parseErrorStack: parseError.stack,
+      })
+      throw new Error(`Failed to parse Lob API response: ${parseError.message}`)
+    }
+
+    logger.info('Postcard details fetched successfully', {
+      resourceId: data.id,
+      status: data.status,
+      size: data.size,
+      mailType: data.mail_type,
+      dateCreated: data.date_created,
+      sendDate: data.send_date,
+      expectedDeliveryDate: data.expected_delivery_date,
+    })
+
+    return data
   }
 }

@@ -23,6 +23,7 @@ export default class extends BaseSchema {
         .notNullable()
         .defaultTo('created')
       table.string('tracking_number').nullable()
+      table.timestamp('mailed_at').nullable()
       table.timestamp('delivered_at').nullable()
       table.integer('quality_rating').nullable()
       table.string('printer_vendor').nullable()
