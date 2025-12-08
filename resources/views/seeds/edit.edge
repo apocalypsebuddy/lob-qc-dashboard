@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Create Seed - Seeds Dashboard</title>
+    <title>Edit Seed - Seeds Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="bg-gray-50 min-h-screen">
@@ -50,9 +50,9 @@
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <div class="px-4 py-8 sm:px-0">
         <div class="max-w-2xl mx-auto bg-white shadow rounded-lg p-6">
-          <h2 class="text-2xl font-bold mb-6">Create Seed</h2>
+          <h2 class="text-2xl font-bold mb-6">Edit Seed</h2>
 
-          <form method="POST" action="{{ route('seeds.store') }}">
+          <form method="POST" action="{{ route('seeds.update', { id: seed.id }) }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
 
             <div class="mb-4">
@@ -63,6 +63,7 @@
                 name="name"
                 autocomplete="off"
                 required
+                value="{{ seed.name }}"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -74,6 +75,7 @@
                 id="frontTemplateId"
                 name="frontTemplateId"
                 required
+                value="{{ seed.frontTemplateId }}"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -85,8 +87,34 @@
                 id="backTemplateId"
                 name="backTemplateId"
                 required
+                value="{{ seed.backTemplateId }}"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
+            </div>
+
+            <div class="mb-4">
+              <label for="cadence" class="block text-sm font-medium text-gray-700 mb-1">Cadence</label>
+              <select
+                id="cadence"
+                name="cadence"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="one_time" {{ seed.cadence === 'one_time' ? 'selected' : '' }}>One Time</option>
+                <option value="weekly" {{ seed.cadence === 'weekly' ? 'selected' : '' }}>Weekly</option>
+                <option value="monthly" {{ seed.cadence === 'monthly' ? 'selected' : '' }}>Monthly</option>
+              </select>
+            </div>
+
+            <div class="mb-4">
+              <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                id="status"
+                name="status"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="active" {{ seed.status === 'active' ? 'selected' : '' }}>Active</option>
+                <option value="paused" {{ seed.status === 'paused' ? 'selected' : '' }}>Paused</option>
+              </select>
             </div>
 
             <div class="border-t pt-4 mt-6">
@@ -108,11 +136,12 @@
             </div>
 
             <script>
-              let addressIndex = 0
+              const addressesBase64 = '{{ addressesBase64 }}';
+              const existingAddresses = JSON.parse(atob(addressesBase64));
+              let addressIndex = existingAddresses.length
               let expandedIndex = 0
 
               function getAddressSummary(index) {
-                // Get from the address group's input fields (whether visible or hidden)
                 const addressGroup = document.querySelector(`.address-group[data-index="${index}"]`)
                 let data = {}
 
@@ -171,7 +200,7 @@
                 return summaryDiv
               }
 
-              function createAddressFields(index) {
+              function createAddressFields(index, addressData = null) {
                 const addressDiv = document.createElement('div')
                 addressDiv.className = 'address-group border border-gray-200 rounded-lg p-4 mb-4 bg-white'
                 addressDiv.dataset.index = index
@@ -195,6 +224,7 @@
                       name="addresses[${index}][toName]"
                       autocomplete="name"
                       maxlength="40"
+                      value="${addressData?.toName || ''}"
                       class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -207,6 +237,7 @@
                       autocomplete="street-address"
                       required
                       maxlength="64"
+                      value="${addressData?.addressLine1 || ''}"
                       class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -218,6 +249,7 @@
                       name="addresses[${index}][addressLine2]"
                       autocomplete="address-line2"
                       maxlength="64"
+                      value="${addressData?.addressLine2 || ''}"
                       class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -231,6 +263,7 @@
                         autocomplete="address-level2"
                         required
                         maxlength="200"
+                        value="${addressData?.addressCity || ''}"
                         class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
@@ -243,6 +276,7 @@
                         required
                         pattern="[A-Z]{2}"
                         maxlength="2"
+                        value="${addressData?.addressState || ''}"
                         class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
@@ -256,6 +290,7 @@
                       autocomplete="postal-code"
                       required
                       pattern="\\d{5}(-\\d{4})?"
+                      value="${addressData?.addressZip || ''}"
                       class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -279,34 +314,28 @@
                 const expanded = document.querySelector(`.address-group[data-index="${index}"][data-type="expanded"]`)
                 if (!expanded) return
 
-                // Hide the form fields but keep them in the DOM for form submission
                 const formFields = expanded.querySelectorAll('.address-input')
                 formFields.forEach(field => {
                   field.style.display = 'none'
                 })
 
-                // Hide all labels
                 const labels = expanded.querySelectorAll('label')
                 labels.forEach(label => {
                   label.style.display = 'none'
                 })
 
-                // Hide the form content divs (everything except header and buttons)
                 const formContent = expanded.querySelectorAll('.mb-4, .grid')
                 formContent.forEach(el => {
-                  // Don't hide the header div
                   if (!el.closest('.flex.justify-between')) {
                     el.style.display = 'none'
                   }
                 })
 
-                // Hide the header buttons (Collapse button)
                 const headerButtons = expanded.querySelector('.flex.items-center.space-x-2')
                 if (headerButtons) {
                   headerButtons.style.display = 'none'
                 }
 
-                // Create and insert summary after the header
                 const summary = createAddressSummary(index)
                 const header = expanded.querySelector('.flex.justify-between')
                 if (header && header.nextSibling) {
@@ -315,7 +344,6 @@
                   expanded.appendChild(summary)
                 }
 
-                // Add a class to mark as collapsed
                 expanded.classList.add('collapsed')
                 expanded.dataset.type = 'collapsed'
 
@@ -325,7 +353,6 @@
               }
 
               function expandAddress(index) {
-                // Collapse currently expanded address if any
                 if (expandedIndex >= 0 && expandedIndex !== index) {
                   collapseAddress(expandedIndex)
                 }
@@ -333,37 +360,31 @@
                 const addressGroup = document.querySelector(`.address-group[data-index="${index}"]`)
                 if (!addressGroup) return
 
-                // Remove summary if it exists
                 const summary = addressGroup.querySelector(`.address-summary[data-index="${index}"]`)
                 if (summary) {
                   summary.remove()
                 }
 
-                // Show all form fields
                 const formFields = addressGroup.querySelectorAll('.address-input')
                 formFields.forEach(field => {
                   field.style.display = ''
                 })
 
-                // Show all labels
                 const labels = addressGroup.querySelectorAll('label')
                 labels.forEach(label => {
                   label.style.display = ''
                 })
 
-                // Show form content
                 const formContent = addressGroup.querySelectorAll('.mb-4, .grid')
                 formContent.forEach(el => {
                   el.style.display = ''
                 })
 
-                // Show header buttons
                 const headerButtons = addressGroup.querySelector('.flex.items-center.space-x-2')
                 if (headerButtons) {
                   headerButtons.style.display = 'flex'
                 }
 
-                // Update state
                 addressGroup.classList.remove('collapsed')
                 addressGroup.dataset.type = 'expanded'
                 expandedIndex = index
@@ -382,17 +403,14 @@
 
               function updateAddressNumbers() {
                 const container = document.getElementById('addressesContainer')
-                // Get all address groups (not summaries, as summaries are children of groups)
                 const addressGroups = Array.from(container.querySelectorAll('.address-group[data-index]'))
                   .sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index))
 
                 addressGroups.forEach((group, newIndex) => {
                   const oldIndex = parseInt(group.dataset.index)
                   if (oldIndex !== newIndex) {
-                    // Update data-index on the group
                     group.dataset.index = newIndex
 
-                    // Update input names in the group
                     group.querySelectorAll('.address-input').forEach(input => {
                       const nameMatch = input.name.match(/^addresses\[\d+\]\[(.+)\]$/)
                       if (nameMatch) {
@@ -400,13 +418,11 @@
                       }
                     })
 
-                    // Update display text in header
                     const header = group.querySelector('h4')
                     if (header) {
                       header.textContent = `Address ${newIndex + 1}`
                     }
 
-                    // Update summary if it exists
                     const summary = group.querySelector(`.address-summary[data-index="${oldIndex}"]`)
                     if (summary) {
                       summary.dataset.index = newIndex
@@ -416,7 +432,6 @@
                       }
                     }
                   } else {
-                    // Even if index hasn't changed, update summary header if it exists
                     const summary = group.querySelector('.address-summary')
                     if (summary) {
                       const summaryHeader = summary.querySelector('.text-sm.font-medium')
@@ -427,7 +442,6 @@
                   }
                 })
 
-                // Update remove button visibility
                 addressGroups.forEach((group, index) => {
                   const removeBtns = group.querySelectorAll('.remove-address-btn')
                   removeBtns.forEach(btn => {
@@ -436,35 +450,25 @@
                 })
               }
 
-              function updateSummaryIfCollapsed(index) {
-                const summary = document.querySelector(`.address-summary[data-index="${index}"]`)
-                if (summary) {
-                  // Preserve stored values
-                  const storedValues = summary.dataset.values
-                  const newSummary = createAddressSummary(index)
-                  if (storedValues) {
-                    newSummary.dataset.values = storedValues
-                  }
-                  summary.replaceWith(newSummary)
-                }
-              }
-
-              // Initialize with first address expanded
               document.addEventListener('DOMContentLoaded', () => {
                 const container = document.getElementById('addressesContainer')
-                const firstAddress = createAddressFields(0)
-                container.appendChild(firstAddress)
-                addressIndex = 1
+
+                // Initialize with existing addresses
+                existingAddresses.forEach((addr, index) => {
+                  const addressFields = createAddressFields(index, addr)
+                  container.appendChild(addressFields)
+                  if (index > 0) {
+                    collapseAddress(index)
+                  }
+                })
+
                 expandedIndex = 0
 
-                // Add address button handler
                 document.getElementById('addAddressBtn').addEventListener('click', () => {
-                  // Collapse currently expanded address
                   if (expandedIndex >= 0) {
                     collapseAddress(expandedIndex)
                   }
 
-                  // Create new expanded address
                   const newAddress = createAddressFields(addressIndex)
                   container.appendChild(newAddress)
                   expandedIndex = addressIndex
@@ -475,13 +479,13 @@
 
             <div class="flex justify-end space-x-4 mt-6">
               <a
-                href="{{ route('seeds.index') }}"
+                href="{{ route('seeds.show', { id: seed.id }) }}"
                 class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </a>
               <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
-                Create Seed
+                Update Seed
               </button>
             </div>
           </form>
@@ -490,4 +494,3 @@
     </main>
   </body>
 </html>
-

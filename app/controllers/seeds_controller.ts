@@ -2,22 +2,31 @@ import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
 import router from '@adonisjs/core/services/router'
 import Seed from '#models/seed'
-import { createSeedValidator } from '#validators/seed'
+import Proof from '#models/proof'
+import { createSeedValidator, updateSeedValidator } from '#validators/seed'
 
 export default class SeedsController {
   async index({ view, auth, request }: HttpContext) {
     const user = auth.getUserOrFail()
-    const seeds = await Seed.query().where('user_id', user.id).orderBy('created_at', 'desc')
+
+    // Load proof counts for each seed
+    const seedsWithProofs = await Seed.query()
+      .where('user_id', user.id)
+      .preload('proofs')
+      .orderBy('created_at', 'desc')
 
     // Format seeds data for template
-    const seedsData = seeds.map((seed) => ({
+    const seedsData = seedsWithProofs.map((seed) => ({
       id: seed.id,
       name: seed.name,
       status: seed.status,
       createdAt: seed.createdAt.toFormat('MMM dd, yyyy'),
+      proofCount: seed.proofs.length,
       statusClass:
         seed.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800',
       showUrl: router.makeUrl('seeds.show', { id: seed.id }),
+      editUrl: router.makeUrl('seeds.edit', { id: seed.id }),
+      deleteUrl: router.makeUrl('seeds.destroy', { id: seed.id }),
     }))
 
     // Encode seeds data as base64 to avoid HTML escaping issues
@@ -138,12 +147,18 @@ export default class SeedsController {
       })
       .firstOrFail()
 
-    // Format seed and proofs data
+    // Format seed and proofs data - match the structure from proofs index
     const proofsData = seed.proofs.map((proof) => ({
       id: proof.id,
+      seedId: proof.seedId,
+      seedName: proof.seedName || seed.name,
+      seedShowUrl: router.makeUrl('seeds.show', { id: seed.id }),
       status: proof.status,
-      createdAt: proof.createdAt.toFormat('MMM dd, yyyy HH:mm'),
+      createdAt: proof.createdAt.toFormat('MMM dd, yyyy'),
+      mailedAt: proof.mailedAt ? proof.mailedAt.toFormat('MMM dd, yyyy') : null,
+      deliveredAt: proof.deliveredAt ? proof.deliveredAt.toFormat('MMM dd, yyyy') : null,
       showUrl: router.makeUrl('proofs.show', { id: proof.id }),
+      deleteUrl: router.makeUrl('proofs.destroy', { id: proof.id }),
     }))
 
     // Encode proofs data as base64 to avoid HTML escaping issues
@@ -180,7 +195,9 @@ export default class SeedsController {
         seed.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800',
       proofs: proofsData,
       proofsBase64,
+      proofCount: seed.proofs.length,
       runUrl: router.makeUrl('seeds.run', { id: seed.id }),
+      deleteUrl: router.makeUrl('seeds.destroy', { id: seed.id }),
     }
 
     // Get flash messages
@@ -222,8 +239,6 @@ export default class SeedsController {
 
       const lobClientModule = await import('#services/lob_client')
       const LobClient = lobClientModule.default
-      const proofModule = await import('#models/proof')
-      const Proof = proofModule.default
 
       // Ensure toAddress is an array
       const addresses = Array.isArray(seed.toAddress) ? seed.toAddress : [seed.toAddress]
@@ -373,6 +388,194 @@ export default class SeedsController {
       }
 
       session.flash('errors', { general: userMessage })
+      return response.redirect().back()
+    }
+  }
+
+  async edit({ params, view, auth, request }: HttpContext) {
+    const user = auth.getUserOrFail()
+    const seed = await Seed.query().where('id', params.id).where('user_id', user.id).firstOrFail()
+
+    // Format addresses - handle both array and single object for backward compatibility
+    const addresses = Array.isArray(seed.toAddress) ? seed.toAddress : [seed.toAddress]
+    const addressesData = addresses.map((addr) => ({
+      toName: addr.name || '',
+      company: addr.company || '',
+      addressLine1: addr.address_line1,
+      addressLine2: addr.address_line2 || '',
+      addressCity: addr.address_city,
+      addressState: addr.address_state,
+      addressZip: addr.address_zip,
+      addressCountry: addr.address_country || 'US',
+      phone: addr.phone || '',
+      email: addr.email || '',
+      description: addr.description || '',
+    }))
+
+    const seedData = {
+      id: seed.id,
+      name: seed.name,
+      frontTemplateId: seed.frontTemplateId,
+      backTemplateId: seed.backTemplateId,
+      cadence: seed.cadence,
+      status: seed.status,
+      addresses: addressesData,
+    }
+
+    // Encode addresses data as base64 to avoid HTML escaping issues
+    const addressesJson = JSON.stringify(addressesData)
+    const addressesBase64 = Buffer.from(addressesJson, 'utf-8').toString('base64')
+
+    const csrfToken = request.csrfToken
+
+    return view.render('seeds/edit', { seed: seedData, addressesBase64, csrfToken })
+  }
+
+  async update({ params, request, response, auth, session }: HttpContext) {
+    try {
+      const user = auth.getUserOrFail()
+      logger.info('Updating seed', { seedId: params.id, userId: user.id })
+
+      const seed = await Seed.query().where('id', params.id).where('user_id', user.id).firstOrFail()
+
+      const data = await request.validateUsing(updateSeedValidator)
+      logger.info('Seed update form validated', {
+        seedId: seed.id,
+        seedName: data.name,
+        userId: user.id,
+        frontTemplateId: data.frontTemplateId,
+        backTemplateId: data.backTemplateId,
+        cadence: data.cadence,
+        status: data.status,
+        addressesCount: data.addresses ? data.addresses.length : 0,
+      })
+
+      // Transform addresses array to match the model format
+      const toAddresses = data.addresses.map((addr, index) => {
+        const transformed = {
+          name: addr.toName || undefined,
+          company: addr.company || undefined,
+          address_line1: addr.addressLine1,
+          address_line2: addr.addressLine2 || undefined,
+          address_city: addr.addressCity,
+          address_state: addr.addressState,
+          address_zip: addr.addressZip,
+          address_country: addr.addressCountry || 'US',
+          phone: addr.phone || undefined,
+          email: addr.email || undefined,
+          description: addr.description || undefined,
+        }
+        logger.info(`Transformed address ${index + 1}`, {
+          userId: user.id,
+          addressIndex: index,
+          transformed: JSON.stringify(transformed),
+        })
+        return transformed
+      })
+
+      seed.name = data.name
+      seed.frontTemplateId = data.frontTemplateId
+      seed.backTemplateId = data.backTemplateId
+      seed.cadence = data.cadence || 'one_time'
+      seed.toAddress = toAddresses
+      if (data.status) {
+        seed.status = data.status
+      }
+      await seed.save()
+
+      logger.info('Seed updated successfully', {
+        seedId: seed.id,
+        seedName: seed.name,
+        userId: user.id,
+      })
+
+      session.flash('success', 'Seed updated successfully!')
+      return response.redirect().toRoute('seeds.show', { id: seed.id })
+    } catch (error: any) {
+      logger.error('Error updating seed', {
+        seedId: params.id,
+        userId: auth.user?.id,
+        error: error.message,
+        errorName: error.name,
+        errorCode: error.code,
+        stack: error.stack,
+        validationErrors: error.messages || error.cause?.messages || undefined,
+        requestBody: JSON.stringify(request.body()),
+      })
+      throw error
+    }
+  }
+
+  async destroy({ params, request, response, auth, session }: HttpContext) {
+    try {
+      const user = auth.getUserOrFail()
+      const deleteProofs = request.input('delete_proofs') === 'true'
+      logger.info('Deleting seed', {
+        seedId: params.id,
+        userId: user.id,
+        deleteProofs,
+      })
+
+      const seed = await Seed.query().where('id', params.id).where('user_id', user.id).firstOrFail()
+
+      // Load proofs to check if any exist
+      await seed.load('proofs')
+      const proofCount = seed.proofs.length
+
+      if (proofCount > 0) {
+        if (deleteProofs) {
+          // Delete all associated proofs
+          logger.info('Deleting associated proofs', {
+            seedId: seed.id,
+            proofCount,
+          })
+          for (const proof of seed.proofs) {
+            await proof.delete()
+          }
+          logger.info('All proofs deleted', { seedId: seed.id, proofCount })
+        } else {
+          // Orphan the proofs by setting seedId to null and storing seed name
+          logger.info('Orphaning proofs', {
+            seedId: seed.id,
+            proofCount,
+            seedName: seed.name,
+          })
+          await Proof.query().where('seed_id', seed.id).where('user_id', user.id).update({
+            seedId: null,
+            seedName: seed.name,
+          })
+          logger.info('Proofs orphaned successfully', { seedId: seed.id, proofCount })
+        }
+      }
+
+      await seed.delete()
+
+      logger.info('Seed deleted successfully', {
+        seedId: params.id,
+        userId: user.id,
+        deletedProofs: deleteProofs,
+        proofCount,
+      })
+
+      const message =
+        proofCount > 0
+          ? deleteProofs
+            ? `Seed and ${proofCount} proof(s) deleted successfully!`
+            : `Seed deleted successfully! ${proofCount} proof(s) have been orphaned.`
+          : 'Seed deleted successfully!'
+
+      session.flash('success', message)
+      return response.redirect().toRoute('seeds.index')
+    } catch (error: any) {
+      logger.error('Error deleting seed', {
+        seedId: params.id,
+        userId: auth.user?.id,
+        error: error.message,
+        stack: error.stack,
+      })
+      session.flash('errors', {
+        general: 'Failed to delete seed. Please try again.',
+      })
       return response.redirect().back()
     }
   }

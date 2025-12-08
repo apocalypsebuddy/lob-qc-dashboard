@@ -12,7 +12,10 @@ export default class Proof extends BaseModel {
   declare userId: string
 
   @column({ columnName: 'seed_id' })
-  declare seedId: string
+  declare seedId: string | null
+
+  @column({ columnName: 'seed_name' })
+  declare seedName: string | null
 
   @column({ columnName: 'resource_id' })
   declare resourceId: string

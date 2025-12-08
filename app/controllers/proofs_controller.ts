@@ -2,7 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
 import router from '@adonisjs/core/services/router'
 import Proof from '#models/proof'
-import { updateProofValidator } from '#validators/proof'
+import { updateProofValidator, updateProofStatusValidator } from '#validators/proof'
 import { unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -12,19 +12,28 @@ import { DateTime } from 'luxon'
 export default class ProofsController {
   async index({ view, auth, request }: HttpContext) {
     const user = auth.getUserOrFail()
-    const proofs = await Proof.query()
-      .where('user_id', user.id)
-      .preload('seed')
-      .orderBy('created_at', 'desc')
+    const statusFilter = request.qs().status as string | undefined
+
+    const query = Proof.query().where('user_id', user.id).preload('seed')
+
+    // Apply status filter if provided
+    if (statusFilter && statusFilter !== 'all') {
+      query.where('status', statusFilter)
+    }
+
+    const proofs = await query.orderBy('created_at', 'desc')
 
     const proofsData = proofs.map((proof) => ({
       id: proof.id,
-      seedName: proof.seed.name,
+      seedId: proof.seedId,
+      seedName: proof.seedName || (proof.seed ? proof.seed.name : 'Unknown Seed'),
+      seedShowUrl: proof.seedId ? router.makeUrl('seeds.show', { id: proof.seedId }) : null,
       status: proof.status,
       createdAt: proof.createdAt.toFormat('MMM dd, yyyy'),
       mailedAt: proof.mailedAt ? proof.mailedAt.toFormat('MMM dd, yyyy') : null,
       deliveredAt: proof.deliveredAt ? proof.deliveredAt.toFormat('MMM dd, yyyy') : null,
       showUrl: router.makeUrl('proofs.show', { id: proof.id }),
+      deleteUrl: router.makeUrl('proofs.destroy', { id: proof.id }),
     }))
 
     // Encode proofs data as base64 to avoid HTML escaping issues
@@ -33,7 +42,12 @@ export default class ProofsController {
 
     const csrfToken = request.csrfToken
 
-    return view.render('proofs/index', { proofs: proofsData, proofsBase64, csrfToken })
+    return view.render('proofs/index', {
+      proofs: proofsData,
+      proofsBase64,
+      csrfToken,
+      statusFilter: statusFilter || 'all',
+    })
   }
 
   async show({ params, view, auth, request }: HttpContext) {
@@ -43,6 +57,11 @@ export default class ProofsController {
       .where('user_id', user.id)
       .preload('seed')
       .firstOrFail()
+
+    // Handle orphaned proofs (seedId is null)
+    const isOrphaned = proof.seedId === null
+    const seedName = proof.seedName || (proof.seed ? proof.seed.name : 'Unknown Seed')
+    const seedShowUrl = proof.seedId ? router.makeUrl('seeds.show', { id: proof.seedId }) : null
 
     // Fetch additional details from Lob API
     let lobDetails = null
@@ -96,8 +115,9 @@ export default class ProofsController {
     const proofData = {
       id: proof.id,
       seedId: proof.seedId,
-      seedName: proof.seed.name,
-      seedShowUrl: router.makeUrl('seeds.show', { id: proof.seedId }),
+      seedName,
+      seedShowUrl,
+      isOrphaned,
       status: proof.status,
       resourceId: proof.resourceId,
       trackingNumber: proof.trackingNumber,
@@ -113,6 +133,7 @@ export default class ProofsController {
       notes: proof.notes,
       uploadUrl: router.makeUrl('proofs.upload', { id: proof.id }),
       updateUrl: router.makeUrl('proofs.update', { id: proof.id }),
+      updateStatusUrl: router.makeUrl('proofs.updateStatus', { id: proof.id }),
       lobDetails,
     }
 
@@ -277,6 +298,88 @@ export default class ProofsController {
         proofId: params.id,
         error: error.message,
         stack: error.stack,
+      })
+      return response.redirect().back()
+    }
+  }
+
+  async updateStatus({ params, request, response, auth, session }: HttpContext) {
+    try {
+      const user = auth.getUserOrFail()
+      logger.info('Updating proof status (dev)', { proofId: params.id, userId: user.id })
+
+      const proof = await Proof.query()
+        .where('id', params.id)
+        .where('user_id', user.id)
+        .firstOrFail()
+
+      const data = await request.validateUsing(updateProofStatusValidator)
+      logger.info('Proof status update validated', {
+        proofId: proof.id,
+        oldStatus: proof.status,
+        newStatus: data.status,
+      })
+
+      proof.status = data.status
+      await proof.save()
+
+      logger.info('Proof status updated successfully', {
+        proofId: proof.id,
+        status: proof.status,
+      })
+
+      session.flash('success', `Proof status updated to ${proof.status}`)
+      return response.redirect().back()
+    } catch (error: any) {
+      logger.error('Error updating proof status', {
+        proofId: params.id,
+        error: error.message,
+        stack: error.stack,
+        code: error.code,
+      })
+      session.flash('errors', {
+        general: 'Failed to update proof status. Please try again.',
+      })
+      return response.redirect().back()
+    }
+  }
+
+  async destroy({ params, response, auth, session }: HttpContext) {
+    try {
+      const user = auth.getUserOrFail()
+      logger.info('Deleting proof', { proofId: params.id, userId: user.id })
+
+      const proof = await Proof.query()
+        .where('id', params.id)
+        .where('user_id', user.id)
+        .firstOrFail()
+
+      const seedId = proof.seedId
+      await proof.delete()
+
+      logger.info('Proof deleted successfully', {
+        proofId: params.id,
+        userId: user.id,
+        seedId,
+      })
+
+      session.flash('success', 'Proof deleted successfully!')
+
+      // Redirect to seed show page if seed exists, otherwise to proofs index
+      if (seedId) {
+        return response.redirect().toRoute('seeds.show', { id: seedId })
+      } else {
+        return response.redirect().toRoute('proofs.index')
+      }
+    } catch (error: any) {
+      logger.error('Error deleting proof', {
+        proofId: params.id,
+        userId: auth.user?.id,
+        error: error.message,
+        stack: error.stack,
+      })
+      session.flash('errors', {
+        general: 'Failed to delete proof. Please try again.',
       })
       return response.redirect().back()
     }

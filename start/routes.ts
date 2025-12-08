@@ -29,11 +29,16 @@ router
     router.get('/seeds/new', [SeedsController, 'create']).as('seeds.create')
     router.post('/seeds', [SeedsController, 'store']).as('seeds.store')
     router.get('/seeds/:id', [SeedsController, 'show']).as('seeds.show')
+    router.get('/seeds/:id/edit', [SeedsController, 'edit']).as('seeds.edit')
+    router.post('/seeds/:id/update', [SeedsController, 'update']).as('seeds.update')
+    router.post('/seeds/:id/delete', [SeedsController, 'destroy']).as('seeds.destroy')
     router.post('/seeds/:id/run', [SeedsController, 'run']).as('seeds.run')
 
     router.get('/proofs', [ProofsController, 'index']).as('proofs.index')
     router.get('/proofs/:id', [ProofsController, 'show']).as('proofs.show')
     router.post('/proofs/:id', [ProofsController, 'update']).as('proofs.update')
+    router.post('/proofs/:id/status', [ProofsController, 'updateStatus']).as('proofs.updateStatus')
+    router.post('/proofs/:id/delete', [ProofsController, 'destroy']).as('proofs.destroy')
     router.get('/proofs/:id/live-proof', [ProofsController, 'showUploadForm']).as('proofs.upload')
     router
       .post('/proofs/:id/live-proof', [ProofsController, 'uploadLiveProof'])

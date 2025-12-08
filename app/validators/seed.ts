@@ -23,3 +23,14 @@ export const createSeedValidator = vine.compile(
     addresses: vine.array(addressSchema).minLength(1),
   })
 )
+
+export const updateSeedValidator = vine.compile(
+  vine.object({
+    name: vine.string().minLength(1),
+    frontTemplateId: vine.string().minLength(1),
+    backTemplateId: vine.string().minLength(1),
+    cadence: vine.enum(['one_time', 'weekly', 'monthly']).optional(),
+    status: vine.enum(['active', 'paused']).optional(),
+    addresses: vine.array(addressSchema).minLength(1),
+  })
+)

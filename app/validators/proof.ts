@@ -7,3 +7,9 @@ export const updateProofValidator = vine.compile(
     notes: vine.string().optional(),
   })
 )
+
+export const updateProofStatusValidator = vine.compile(
+  vine.object({
+    status: vine.enum(['created', 'in_production', 'mailed', 'delivered', 'awaiting_review', 'completed']),
+  })
+)
