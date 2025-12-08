@@ -19,6 +19,7 @@ interface CreatePostcardParams {
   toAddress: LobAddressObject
   frontTemplateId: string
   backTemplateId: string
+  seedName?: string
 }
 
 interface LobThumbnail {
@@ -48,13 +49,13 @@ interface LobPostcardResponse {
 
 export default class LobClient {
   /**
-   * TODO: Configure a real from address for production
-   * For PoC, using a hardcoded test address
+   * Get the from address for postcards
+   * @param seedName - Optional seed name to use as the company name
    */
-  private static getFromAddress() {
+  private static getFromAddress(seedName?: string) {
     return {
-      name: 'Test Sender',
-      company: 'Test Company',
+      name: 'Lob Proofs',
+      company: seedName || 'Test Company',
       address_line1: '123 Test St',
       address_city: 'San Francisco',
       address_state: 'CA',
@@ -73,7 +74,7 @@ export default class LobClient {
 
     const payload = {
       to: params.toAddress,
-      from: this.getFromAddress(),
+      from: this.getFromAddress(params.seedName),
       front: params.frontTemplateId,
       back: params.backTemplateId,
       size: '6x9' as const,
@@ -129,14 +130,35 @@ export default class LobClient {
 
     if (!response.ok) {
       const errorText = await response.text()
+
+      // Try to parse error response as JSON for better error messages
+      let parsedError: any = null
+      let errorMessage = errorText
+      try {
+        parsedError = JSON.parse(errorText)
+        if (parsedError.error?.message) {
+          errorMessage = parsedError.error.message
+        } else if (parsedError.message) {
+          errorMessage = parsedError.message
+        } else if (parsedError.errors && Array.isArray(parsedError.errors)) {
+          errorMessage = parsedError.errors.map((e: any) => e.message || e).join('; ')
+        }
+      } catch (e) {
+        // If parsing fails, use the raw error text
+      }
+
       logger.error('Lob API error response', {
         url,
         status: response.status,
         statusText: response.statusText,
         errorText,
+        parsedError,
+        errorMessage,
         requestPayload: payload,
+        toAddress: params.toAddress,
       })
-      throw new Error(`Lob API error: ${response.status} - ${errorText}`)
+
+      throw new Error(`Lob API error (${response.status}): ${errorMessage}`)
     }
 
     const data = (await response.json()) as LobPostcardResponse

@@ -23,13 +23,56 @@ export default class ProofsController {
 
     const proofs = await query.orderBy('created_at', 'desc')
 
+    // Fetch thumbnails from Lob API for proofs that don't have them
+    const thumbnailPromises = proofs.map(async (proof) => {
+      let frontThumbnailUrl = proof.frontThumbnailUrl || proof.thumbnailUrl || null
+
+      // If no thumbnail, try to fetch from Lob API
+      if (!frontThumbnailUrl && proof.resourceId) {
+        try {
+          const lobPostcard = await LobClient.getPostcard(user, proof.resourceId)
+          if (lobPostcard.thumbnails && lobPostcard.thumbnails.length > 0) {
+            const frontThumbnail = lobPostcard.thumbnails[0]
+            frontThumbnailUrl =
+              frontThumbnail.large || frontThumbnail.medium || frontThumbnail.small || null
+
+            // Optionally save to database for future use
+            if (frontThumbnailUrl && !proof.frontThumbnailUrl) {
+              proof.frontThumbnailUrl = frontThumbnailUrl
+              await proof.save()
+            }
+          }
+        } catch (error: any) {
+          logger.warn('Failed to fetch thumbnail from Lob API', {
+            proofId: proof.id,
+            resourceId: proof.resourceId,
+            error: error.message,
+          })
+          // Continue without thumbnail
+        }
+      }
+
+      return {
+        proofId: proof.id,
+        frontThumbnailUrl,
+      }
+    })
+
+    const thumbnailResults = await Promise.all(thumbnailPromises)
+    const thumbnailMap = new Map(
+      thumbnailResults.map((result) => [result.proofId, result.frontThumbnailUrl])
+    )
+
     const proofsData = proofs.map((proof) => ({
       id: proof.id,
       seedId: proof.seedId,
       seedName: proof.seedName || (proof.seed ? proof.seed.name : 'Unknown Seed'),
       seedShowUrl: proof.seedId ? router.makeUrl('seeds.show', { id: proof.seedId }) : null,
+      publicId: proof.publicId,
       status: proof.status,
-      createdAt: proof.createdAt.toFormat('MMM dd, yyyy'),
+      frontThumbnailUrl:
+        thumbnailMap.get(proof.id) || proof.frontThumbnailUrl || proof.thumbnailUrl || null,
+      createdAt: proof.createdAt.toFormat('MMM dd, yyyy HH:mm'),
       mailedAt: proof.mailedAt ? proof.mailedAt.toFormat('MMM dd, yyyy') : null,
       deliveredAt: proof.deliveredAt ? proof.deliveredAt.toFormat('MMM dd, yyyy') : null,
       showUrl: router.makeUrl('proofs.show', { id: proof.id }),
@@ -80,6 +123,8 @@ export default class ProofsController {
           ? DateTime.fromISO(lobPostcard.send_date).toFormat('MMM dd, yyyy HH:mm')
           : null,
         expectedDeliveryDate: lobPostcard.expected_delivery_date || null,
+        url: lobPostcard.url || null,
+        rawUrl: lobPostcard.raw_url || null,
       }
 
       // Extract thumbnail URLs from API if not available in database
@@ -118,6 +163,7 @@ export default class ProofsController {
       seedName,
       seedShowUrl,
       isOrphaned,
+      publicId: proof.publicId,
       status: proof.status,
       resourceId: proof.resourceId,
       trackingNumber: proof.trackingNumber,
@@ -344,7 +390,7 @@ export default class ProofsController {
     }
   }
 
-  async destroy({ params, response, auth, session }: HttpContext) {
+  async destroy({ params, request, response, auth, session }: HttpContext) {
     try {
       const user = auth.getUserOrFail()
       logger.info('Deleting proof', { proofId: params.id, userId: user.id })
@@ -365,12 +411,26 @@ export default class ProofsController {
 
       session.flash('success', 'Proof deleted successfully!')
 
-      // Redirect to seed show page if seed exists, otherwise to proofs index
-      if (seedId) {
-        return response.redirect().toRoute('seeds.show', { id: seedId })
-      } else {
-        return response.redirect().toRoute('proofs.index')
+      // Check referrer to determine redirect destination
+      const referer = request.header('referer') || ''
+      // If coming from a seed show page, redirect back to that seed page
+      // Match /seeds/:id pattern (capture ID before any query params or fragments)
+      const seedShowMatch = referer.match(/\/seeds\/([^\/\?\#]+)/)
+      if (seedShowMatch && seedShowMatch[1]) {
+        const refererSeedId = seedShowMatch[1]
+        logger.info('Redirecting to seed show page based on referer', {
+          refererSeedId,
+          referer,
+          proofId: params.id,
+        })
+        return response.redirect().toRoute('seeds.show', { id: refererSeedId })
       }
+
+      // Otherwise, redirect to proofs index
+      logger.info('Redirecting to proofs index', {
+        proofId: params.id,
+      })
+      return response.redirect().toRoute('proofs.index')
     } catch (error: any) {
       logger.error('Error deleting proof', {
         proofId: params.id,

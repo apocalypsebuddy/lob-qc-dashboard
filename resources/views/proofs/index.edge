@@ -72,9 +72,14 @@
               const seedCell = proof.seedShowUrl
                 ? `<a href="${proof.seedShowUrl}" class="text-blue-600 hover:text-blue-800">${proof.seedName}</a>`
                 : `<span class="text-gray-500 italic">${proof.seedName} <span class="text-xs text-gray-400">(deleted)</span></span>`;
+              const thumbnailCell = proof.frontThumbnailUrl
+                ? `<img src="${proof.frontThumbnailUrl}" alt="Front thumbnail" class="w-12 h-8 object-cover rounded border border-gray-200" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'48\\' height=\\'32\\'%3E%3Crect fill=\\'%23e5e7eb\\' width=\\'48\\' height=\\'32\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%239ca3af\\' font-size=\\'10\\'%3E-%3C/text%3E%3C/svg%3E';" />`
+                : `<span class="text-gray-400 text-xs">-</span>`;
               return `
               <tr>
+                <td class="px-6 py-4 whitespace-nowrap">${thumbnailCell}</td>
                 <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${seedCell}</div></td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${proof.publicId || '-'}</td>
                 <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">${proof.status}</span></td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${proof.createdAt}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${proof.mailedAt || '-'}</td>
@@ -98,7 +103,9 @@
                 <table class="min-w-full divide-y divide-gray-200">
                   <thead class="bg-gray-50">
                     <tr>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thumbnail</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seed</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Public ID</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mailed</th>

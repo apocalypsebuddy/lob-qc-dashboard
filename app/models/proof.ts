@@ -17,6 +17,9 @@ export default class Proof extends BaseModel {
   @column({ columnName: 'seed_name' })
   declare seedName: string | null
 
+  @column({ columnName: 'public_id' })
+  declare publicId: string | null
+
   @column({ columnName: 'resource_id' })
   declare resourceId: string
 

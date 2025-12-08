@@ -171,12 +171,9 @@
               container.innerHTML = '<div class="p-6 text-center text-gray-500">No proofs yet. Run this seed to create a proof.</div>';
             } else {
               const rows = proofs.map(proof => {
-                const seedCell = proof.seedShowUrl
-                  ? `<a href="${proof.seedShowUrl}" class="text-blue-600 hover:text-blue-800">${proof.seedName}</a>`
-                  : `<span class="text-gray-500 italic">${proof.seedName} <span class="text-xs text-gray-400">(deleted)</span></span>`;
                 return `
                 <tr>
-                  <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${seedCell}</div></td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${proof.publicId || '-'}</td>
                   <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">${proof.status}</span></td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${proof.createdAt}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${proof.mailedAt || '-'}</td>
@@ -199,7 +196,7 @@
                 <table class="min-w-full divide-y divide-gray-200">
                   <thead class="bg-gray-50">
                     <tr>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seed</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Public ID</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mailed</th>

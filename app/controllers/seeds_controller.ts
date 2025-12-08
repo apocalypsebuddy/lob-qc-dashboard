@@ -4,6 +4,7 @@ import router from '@adonisjs/core/services/router'
 import Seed from '#models/seed'
 import Proof from '#models/proof'
 import { createSeedValidator, updateSeedValidator } from '#validators/seed'
+import { randomBytes } from 'node:crypto'
 
 export default class SeedsController {
   async index({ view, auth, request }: HttpContext) {
@@ -16,18 +17,29 @@ export default class SeedsController {
       .orderBy('created_at', 'desc')
 
     // Format seeds data for template
-    const seedsData = seedsWithProofs.map((seed) => ({
-      id: seed.id,
-      name: seed.name,
-      status: seed.status,
-      createdAt: seed.createdAt.toFormat('MMM dd, yyyy'),
-      proofCount: seed.proofs.length,
-      statusClass:
-        seed.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800',
-      showUrl: router.makeUrl('seeds.show', { id: seed.id }),
-      editUrl: router.makeUrl('seeds.edit', { id: seed.id }),
-      deleteUrl: router.makeUrl('seeds.destroy', { id: seed.id }),
-    }))
+    const seedsData = seedsWithProofs.map((seed) => {
+      // Format cadence for display
+      let cadenceDisplay = 'Monthly'
+      if (seed.cadence === 'one_time') {
+        cadenceDisplay = 'One Time'
+      } else if (seed.cadence === 'weekly') {
+        cadenceDisplay = 'Weekly'
+      }
+
+      return {
+        id: seed.id,
+        name: seed.name,
+        status: seed.status,
+        cadence: cadenceDisplay,
+        createdAt: seed.createdAt.toFormat('MMM dd, yyyy'),
+        proofCount: seed.proofs.length,
+        statusClass:
+          seed.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800',
+        showUrl: router.makeUrl('seeds.show', { id: seed.id }),
+        editUrl: router.makeUrl('seeds.edit', { id: seed.id }),
+        deleteUrl: router.makeUrl('seeds.destroy', { id: seed.id }),
+      }
+    })
 
     // Encode seeds data as base64 to avoid HTML escaping issues
     const seedsJson = JSON.stringify(seedsData)
@@ -153,8 +165,9 @@ export default class SeedsController {
       seedId: proof.seedId,
       seedName: proof.seedName || seed.name,
       seedShowUrl: router.makeUrl('seeds.show', { id: seed.id }),
+      publicId: proof.publicId,
       status: proof.status,
-      createdAt: proof.createdAt.toFormat('MMM dd, yyyy'),
+      createdAt: proof.createdAt.toFormat('MMM dd, yyyy HH:mm'),
       mailedAt: proof.mailedAt ? proof.mailedAt.toFormat('MMM dd, yyyy') : null,
       deliveredAt: proof.deliveredAt ? proof.deliveredAt.toFormat('MMM dd, yyyy') : null,
       showUrl: router.makeUrl('proofs.show', { id: proof.id }),
@@ -256,17 +269,29 @@ export default class SeedsController {
       // Create a postcard for each address
       for (let i = 0; i < addresses.length; i++) {
         const address = addresses[i]
+        // Generate a unique 6-digit hexadecimal number for the proof company field
+        const proofHex = randomBytes(3).toString('hex').toUpperCase()
+        const proofCompany = `Proof ${proofHex}`
+
         try {
+          // Create a copy of the address and add the company field
+          const addressWithCompany = {
+            ...address,
+            company: proofCompany,
+          }
+
           logger.info(`Creating postcard ${i + 1} of ${addresses.length}`, {
             seedId: seed.id,
             addressIndex: i,
-            toAddress: address,
+            toAddress: addressWithCompany,
+            proofCompany,
           })
 
           const result = await LobClient.createPostcard(user, {
-            toAddress: address,
+            toAddress: addressWithCompany,
             frontTemplateId: seed.frontTemplateId,
             backTemplateId: seed.backTemplateId,
+            seedName: seed.name,
           })
 
           logger.info('Postcard created successfully', {
@@ -296,6 +321,7 @@ export default class SeedsController {
           const proof = await Proof.create({
             userId: user.id,
             seedId: seed.id,
+            publicId: proofHex,
             resourceId: result.id,
             lobUrl: result.url,
             thumbnailUrl: result.thumbnail_url,
@@ -313,27 +339,82 @@ export default class SeedsController {
 
           createdProofs.push(proof)
         } catch (error: any) {
-          logger.error(`Error creating postcard for address ${i + 1}`, {
+          // Enhanced error logging
+          const errorMessage = error.message || 'Unknown error occurred'
+          const errorDetails = {
             seedId: seed.id,
             addressIndex: i,
-            error: error.message,
-            stack: error.stack,
+            address: address,
+            proofCompany: proofCompany,
+            errorMessage: errorMessage,
+            errorName: error.name,
+            errorCode: error.code,
+            errorStack: error.stack,
+            errorString: String(error),
+            errorKeys: error ? Object.keys(error) : [],
+          }
+
+          logger.error(`Error creating postcard for address ${i + 1}`, errorDetails)
+
+          // Try to extract more detailed error message
+          let displayError = errorMessage
+          if (error.response?.body) {
+            try {
+              const errorBody =
+                typeof error.response.body === 'string'
+                  ? JSON.parse(error.response.body)
+                  : error.response.body
+              if (errorBody.error?.message) {
+                displayError = errorBody.error.message
+              } else if (errorBody.message) {
+                displayError = errorBody.message
+              }
+            } catch {
+              // Ignore parsing errors
+            }
+          }
+
+          errors.push({
+            addressIndex: i,
+            address: address,
+            error: displayError,
+            fullError: errorMessage,
           })
-          errors.push({ addressIndex: i, error: error.message })
         }
       }
 
       if (errors.length > 0) {
         const successCount = createdProofs.length
         const errorCount = errors.length
+
+        // Build detailed error message
+        const errorMessages = errors
+          .map((err) => {
+            const addrSummary = err.address?.address_line1
+              ? `${err.address.address_line1}, ${err.address.address_city}`
+              : `Address ${err.addressIndex + 1}`
+            return `${addrSummary}: ${err.error}`
+          })
+          .join('; ')
+
+        logger.error('Seed run completed with errors', {
+          seedId: seed.id,
+          successCount,
+          errorCount,
+          errors: errors.map((err) => ({ addressIndex: err.addressIndex, error: err.error })),
+        })
+
         if (successCount > 0) {
           session.flash(
             'success',
             `Seed run partially successful! ${successCount} postcard(s) created, ${errorCount} failed.`
           )
+          session.flash('errors', {
+            general: `Some postcards failed: ${errorMessages}`,
+          })
         } else {
           session.flash('errors', {
-            general: `Failed to create postcards. ${errorCount} error(s) occurred.`,
+            general: `Failed to create postcards. Errors: ${errorMessages}`,
           })
         }
       } else {

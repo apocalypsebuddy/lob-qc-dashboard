@@ -74,6 +74,12 @@
                   <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">{{ proof.status }}</span>
                 </dd>
               </div>
+              @if(proof.publicId)
+                <div>
+                  <dt class="text-sm font-medium text-gray-500">Public ID</dt>
+                  <dd class="mt-1 text-sm text-gray-900 font-mono">{{ proof.publicId }}</dd>
+                </div>
+              @endif
               <div id="resource-id"></div>
               <div id="tracking-number"></div>
               <div id="delivered-at"></div>
@@ -158,16 +164,18 @@
 
           <div class="bg-white shadow rounded-lg p-6">
             <h2 class="text-xl font-semibold mb-4">Lob Rendered Proofs</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <h3 class="text-sm font-medium text-gray-700 mb-2">Front</h3>
                 <div id="front-thumbnail"></div>
                 <script>
                   if (proof.frontThumbnailUrl) {
-                    document.getElementById('front-thumbnail').innerHTML = `<img src="${proof.frontThumbnailUrl}" alt="Postcard front thumbnail" class="w-full rounded-lg shadow-sm" />`;
+                    const frontThumbnailUrl = proof.frontThumbnailUrl;
+                    document.getElementById('front-thumbnail').innerHTML = `<a href="${frontThumbnailUrl}" target="_blank" rel="noopener noreferrer"><img src="${frontThumbnailUrl}" alt="Postcard front thumbnail" class="w-full rounded-lg shadow-sm hover:opacity-90 cursor-pointer" /></a>`;
                   } else if (proof.thumbnailUrl) {
                     // Fallback to old thumbnailUrl for backward compatibility
-                    document.getElementById('front-thumbnail').innerHTML = `<img src="${proof.thumbnailUrl}" alt="Postcard thumbnail" class="w-full rounded-lg shadow-sm" />`;
+                    const thumbnailUrl = proof.thumbnailUrl;
+                    document.getElementById('front-thumbnail').innerHTML = `<a href="${thumbnailUrl}" target="_blank" rel="noopener noreferrer"><img src="${thumbnailUrl}" alt="Postcard thumbnail" class="w-full rounded-lg shadow-sm hover:opacity-90 cursor-pointer" /></a>`;
                   }
                 </script>
               </div>
@@ -176,13 +184,28 @@
                 <div id="back-thumbnail"></div>
                 <script>
                   if (proof.backThumbnailUrl) {
-                    document.getElementById('back-thumbnail').innerHTML = `<img src="${proof.backThumbnailUrl}" alt="Postcard back thumbnail" class="w-full rounded-lg shadow-sm" />`;
+                    const backThumbnailUrl = proof.backThumbnailUrl;
+                    document.getElementById('back-thumbnail').innerHTML = `<a href="${backThumbnailUrl}" target="_blank" rel="noopener noreferrer"><img src="${backThumbnailUrl}" alt="Postcard back thumbnail" class="w-full rounded-lg shadow-sm hover:opacity-90 cursor-pointer" /></a>`;
                   } else {
                     document.getElementById('back-thumbnail').innerHTML = `<p class="text-sm text-gray-500 italic">No back thumbnail available</p>`;
                   }
                 </script>
               </div>
             </div>
+            <div id="lob-urls" class="mt-4 pt-4 border-t border-gray-200"></div>
+            <script>
+              if (proof.lobDetails && (proof.lobDetails.url || proof.lobDetails.rawUrl)) {
+                let urlsHtml = '<div class="flex flex-col gap-2">';
+                if (proof.lobDetails.url) {
+                  urlsHtml += `<a href="${proof.lobDetails.url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 text-sm">View PDF</a>`;
+                }
+                if (proof.lobDetails.rawUrl) {
+                  urlsHtml += `<a href="${proof.lobDetails.rawUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 text-sm">View Raw PDF</a>`;
+                }
+                urlsHtml += '</div>';
+                document.getElementById('lob-urls').innerHTML = urlsHtml;
+              }
+            </script>
           </div>
         </div>
 
@@ -256,7 +279,7 @@
               }
             </script>
 
-            <div class="mb-4">
+            {{--  <div class="mb-4">
               <label for="printerVendor" class="block text-sm font-medium text-gray-700 mb-1">Printer Vendor</label>
               <input
                 type="text"
@@ -265,7 +288,7 @@
                 value="{{ proof.printerVendor || '' }}"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
-            </div>
+            </div>  --}}
 
             <div class="mb-4">
               <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
