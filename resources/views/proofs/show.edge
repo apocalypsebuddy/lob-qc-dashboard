@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proof Details - Seeds Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <nav class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex">
+            <div class="flex-shrink-0 flex items-center">
+              <a href="{{ route('home') }}" class="text-xl font-bold text-gray-900">Seeds Dashboard</a>
+            </div>
+            <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+              <a href="{{ route('seeds.index') }}" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Seeds</a>
+              <a href="{{ route('proofs.index') }}" class="border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Proofs</a>
+              <a href="{{ route('settings.edit') }}" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Settings</a>
+            </div>
+          </div>
+          <div class="flex items-center">
+            <form method="POST" action="{{ route('auth.logout') }}">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+              <button type="submit" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium">Logout</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <div class="px-4 py-8 sm:px-0">
+        <div class="mb-6">
+          <a href="{{ route('proofs.index') }}" class="text-blue-600 hover:text-blue-800 mb-4 inline-block">← Back to Proofs</a>
+          <h1 class="text-3xl font-bold">Proof Details</h1>
+        </div>
+
+        <script>
+          // Declare proof data once at the top for reuse across all script blocks
+          const proofBase64 = '{{ proofBase64 }}';
+          const proof = JSON.parse(atob(proofBase64));
+        </script>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white shadow rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Proof Information</h2>
+            <dl class="space-y-4">
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Seed</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ proof.seedName }}</dd>
+              </div>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Status</dt>
+                <dd class="mt-1">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">{{ proof.status }}</span>
+                </dd>
+              </div>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Resource ID</dt>
+                <dd class="mt-1 text-sm text-gray-900 font-mono">{{ proof.resourceId }}</dd>
+              </div>
+              <div id="tracking-number"></div>
+              <div id="delivered-at"></div>
+            </dl>
+            <script>
+              if (proof.trackingNumber) {
+                document.getElementById('tracking-number').innerHTML = `
+                  <div>
+                    <dt class="text-sm font-medium text-gray-500">Tracking Number</dt>
+                    <dd class="mt-1 text-sm text-gray-900">${proof.trackingNumber}</dd>
+                  </div>
+                `;
+              }
+              if (proof.deliveredAt) {
+                document.getElementById('delivered-at').innerHTML = `
+                  <div>
+                    <dt class="text-sm font-medium text-gray-500">Delivered At</dt>
+                    <dd class="mt-1 text-sm text-gray-900">${proof.deliveredAt}</dd>
+                  </div>
+                `;
+              }
+            </script>
+          </div>
+
+          <div class="bg-white shadow rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Lob Rendering</h2>
+            <div id="thumbnail"></div>
+            <script>
+              if (proof.thumbnailUrl) {
+                document.getElementById('thumbnail').innerHTML = `<img src="${proof.thumbnailUrl}" alt="Postcard thumbnail" class="w-full rounded-lg shadow-sm" />`;
+              }
+            </script>
+          </div>
+        </div>
+
+        <div id="live-proof"></div>
+        <script>
+          if (proof.liveProofUrl) {
+            document.getElementById('live-proof').innerHTML = `
+              <div class="mt-6 bg-white shadow rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Live Proof</h2>
+                <img src="${proof.liveProofUrl}" alt="Live proof" class="max-w-full rounded-lg shadow-sm" />
+              </div>
+            `;
+          }
+        </script>
+
+        <div class="mt-6 bg-white shadow rounded-lg p-6">
+          <h2 class="text-xl font-semibold mb-4">Upload Live Proof</h2>
+          <a href="{{ proof.uploadUrl }}" class="inline-block bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md">
+            Capture / Upload Live Proof
+          </a>
+        </div>
+
+        <div class="mt-6 bg-white shadow rounded-lg p-6">
+          <h2 class="text-xl font-semibold mb-4">Quality Review</h2>
+          <form method="POST" action="{{ proof.updateUrl }}">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+
+            <div class="mb-4">
+              <label for="qualityRating" class="block text-sm font-medium text-gray-700 mb-1">Quality Rating (1-5)</label>
+              <select id="qualityRating" name="qualityRating" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <option value="">Select rating</option>
+                <option value="1">1 - Poor</option>
+                <option value="2">2 - Fair</option>
+                <option value="3">3 - Good</option>
+                <option value="4">4 - Very Good</option>
+                <option value="5">5 - Excellent</option>
+              </select>
+            </div>
+            <script>
+              if (proof.qualityRating) {
+                document.getElementById('qualityRating').value = proof.qualityRating.toString();
+              }
+            </script>
+
+            <div class="mb-4">
+              <label for="printerVendor" class="block text-sm font-medium text-gray-700 mb-1">Printer Vendor</label>
+              <input
+                type="text"
+                id="printerVendor"
+                name="printerVendor"
+                value="{{ proof.printerVendor || '' }}"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            <div class="mb-4">
+              <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+              <textarea
+                id="notes"
+                name="notes"
+                rows="4"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >{{ proof.notes || '' }}</textarea>
+            </div>
+
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
+              Save Review
+            </button>
+          </form>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
