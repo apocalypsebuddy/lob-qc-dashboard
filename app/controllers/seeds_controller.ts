@@ -33,6 +33,8 @@ export default class SeedsController {
         status: seed.status,
         cadence: cadenceDisplay,
         createdAt: seed.createdAt.toFormat('MMM dd, yyyy'),
+        lastRunAt: seed.lastRunAt ? seed.lastRunAt.toFormat('MMM dd, yyyy HH:mm') : null,
+        nextRunAt: seed.nextRunAt ? seed.nextRunAt.toFormat('MMM dd, yyyy HH:mm') : null,
         proofCount: seed.proofs.length,
         statusClass:
           seed.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800',

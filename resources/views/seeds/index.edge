@@ -79,11 +79,13 @@
                 <td class="px-6 py-4 whitespace-nowrap">
                   <a href="${seed.showUrl}" class="text-blue-600 hover:text-blue-800 font-medium">${seed.name}</a>
                 </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.createdAt}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${seed.statusClass}">${seed.status}</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.cadence}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.createdAt}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.lastRunAt || 'Never'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.nextRunAt || 'N/A'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                   <a href="${seed.showUrl}" class="text-blue-600 hover:text-blue-800">View</a>
                   <a href="${seed.editUrl}" class="text-green-600 hover:text-green-800">Edit</a>
@@ -104,9 +106,11 @@
                   <thead class="bg-gray-50">
                     <tr>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cadence</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Run</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Run</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
