@@ -1,10 +1,11 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
 import router from '@adonisjs/core/services/router'
+import { DateTime } from 'luxon'
 import Seed from '#models/seed'
 import Proof from '#models/proof'
+import SeedService from '#services/seed_service'
 import { createSeedValidator, updateSeedValidator } from '#validators/seed'
-import { randomBytes } from 'node:crypto'
 
 export default class SeedsController {
   async index({ view, auth, request }: HttpContext) {
@@ -105,12 +106,21 @@ export default class SeedsController {
         return transformed
       })
 
+      const cadence = data.cadence || 'one_time'
+
+      // Set next_run_at based on cadence
+      let nextRunAt: DateTime | null = null
+      if (cadence !== 'one_time') {
+        nextRunAt = DateTime.utc()
+      }
+
       logger.info('Creating seed record', {
         userId: user.id,
         name: data.name,
         frontTemplateId: data.frontTemplateId,
         backTemplateId: data.backTemplateId,
-        cadence: data.cadence || 'one_time',
+        cadence: cadence,
+        nextRunAt: nextRunAt?.toISO(),
         addressesCount: toAddresses.length,
         toAddresses: JSON.stringify(toAddresses),
       })
@@ -120,9 +130,10 @@ export default class SeedsController {
         name: data.name,
         frontTemplateId: data.frontTemplateId,
         backTemplateId: data.backTemplateId,
-        cadence: data.cadence || 'one_time',
+        cadence: cadence,
         toAddress: toAddresses,
         status: 'active',
+        nextRunAt: nextRunAt,
         meta: {},
       })
 
@@ -203,6 +214,8 @@ export default class SeedsController {
       backTemplateId: seed.backTemplateId,
       status: seed.status,
       cadence: seed.cadence,
+      lastRunAt: seed.lastRunAt ? seed.lastRunAt.toFormat('MMM dd, yyyy HH:mm') : null,
+      nextRunAt: seed.nextRunAt ? seed.nextRunAt.toFormat('MMM dd, yyyy HH:mm') : null,
       addresses: addressesData,
       statusClass:
         seed.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800',
@@ -250,145 +263,14 @@ export default class SeedsController {
         return response.redirect().toRoute('settings.edit')
       }
 
-      const lobClientModule = await import('#services/lob_client')
-      const LobClient = lobClientModule.default
+      const result = await SeedService.runSeed(seed, user)
 
-      // Ensure toAddress is an array
-      const addresses = Array.isArray(seed.toAddress) ? seed.toAddress : [seed.toAddress]
-
-      logger.info('Creating postcards via Lob API', {
-        seedId: seed.id,
-        frontTemplateId: seed.frontTemplateId,
-        backTemplateId: seed.backTemplateId,
-        addressCount: addresses.length,
-      })
-
-      const createdProofs = []
-      const errors = []
-
-      // Create a postcard for each address
-      for (let i = 0; i < addresses.length; i++) {
-        const address = addresses[i]
-        // Generate a unique 6-digit hexadecimal number for the proof company field
-        const proofHex = randomBytes(3).toString('hex').toUpperCase()
-        const proofCompany = `Proof ${proofHex}`
-
-        try {
-          // Create a copy of the address and add the company field
-          const addressWithCompany = {
-            ...address,
-            company: proofCompany,
-          }
-
-          logger.info(`Creating postcard ${i + 1} of ${addresses.length}`, {
-            seedId: seed.id,
-            addressIndex: i,
-            toAddress: addressWithCompany,
-            proofCompany,
-          })
-
-          const result = await LobClient.createPostcard(user, {
-            toAddress: addressWithCompany,
-            frontTemplateId: seed.frontTemplateId,
-            backTemplateId: seed.backTemplateId,
-            seedName: seed.name,
-          })
-
-          logger.info('Postcard created successfully', {
-            resourceId: result.id,
-            lobUrl: result.url,
-            thumbnailUrl: result.thumbnail_url,
-            thumbnailUrlLength: result.thumbnail_url?.length || 0,
-            frontThumbnailUrl: result.front_thumbnail_url,
-            backThumbnailUrl: result.back_thumbnail_url,
-            seedId: seed.id,
-            addressIndex: i,
-          })
-
-          logger.info('Creating proof record', {
-            userId: user.id,
-            seedId: seed.id,
-            resourceId: result.id,
-            lobUrl: result.url,
-            thumbnailUrl: result.thumbnail_url,
-            thumbnailUrlLength: result.thumbnail_url?.length || 0,
-            frontThumbnailUrl: result.front_thumbnail_url,
-            backThumbnailUrl: result.back_thumbnail_url,
-            status: 'created',
-            addressIndex: i,
-          })
-
-          const proof = await Proof.create({
-            userId: user.id,
-            seedId: seed.id,
-            publicId: proofHex,
-            resourceId: result.id,
-            lobUrl: result.url,
-            thumbnailUrl: result.thumbnail_url,
-            frontThumbnailUrl: result.front_thumbnail_url,
-            backThumbnailUrl: result.back_thumbnail_url,
-            status: 'created',
-          })
-
-          logger.info('Proof created successfully', {
-            proofId: proof.id,
-            resourceId: result.id,
-            seedId: seed.id,
-            addressIndex: i,
-          })
-
-          createdProofs.push(proof)
-        } catch (error: any) {
-          // Enhanced error logging
-          const errorMessage = error.message || 'Unknown error occurred'
-          const errorDetails = {
-            seedId: seed.id,
-            addressIndex: i,
-            address: address,
-            proofCompany: proofCompany,
-            errorMessage: errorMessage,
-            errorName: error.name,
-            errorCode: error.code,
-            errorStack: error.stack,
-            errorString: String(error),
-            errorKeys: error ? Object.keys(error) : [],
-          }
-
-          logger.error(`Error creating postcard for address ${i + 1}`, errorDetails)
-
-          // Try to extract more detailed error message
-          let displayError = errorMessage
-          if (error.response?.body) {
-            try {
-              const errorBody =
-                typeof error.response.body === 'string'
-                  ? JSON.parse(error.response.body)
-                  : error.response.body
-              if (errorBody.error?.message) {
-                displayError = errorBody.error.message
-              } else if (errorBody.message) {
-                displayError = errorBody.message
-              }
-            } catch {
-              // Ignore parsing errors
-            }
-          }
-
-          errors.push({
-            addressIndex: i,
-            address: address,
-            error: displayError,
-            fullError: errorMessage,
-          })
-        }
-      }
-
-      if (errors.length > 0) {
-        const successCount = createdProofs.length
-        const errorCount = errors.length
+      if (result.errors.length > 0) {
+        const successCount = result.proofs.length
+        const errorCount = result.errors.length
 
         // Build detailed error message
-        const errorMessages = errors
+        const errorMessages = result.errors
           .map((err) => {
             const addrSummary = err.address?.address_line1
               ? `${err.address.address_line1}, ${err.address.address_city}`
@@ -401,7 +283,10 @@ export default class SeedsController {
           seedId: seed.id,
           successCount,
           errorCount,
-          errors: errors.map((err) => ({ addressIndex: err.addressIndex, error: err.error })),
+          errors: result.errors.map((err) => ({
+            addressIndex: err.addressIndex,
+            error: err.error,
+          })),
         })
 
         if (successCount > 0) {
@@ -420,7 +305,7 @@ export default class SeedsController {
       } else {
         session.flash(
           'success',
-          `Seed run successfully! ${createdProofs.length} postcard(s) created.`
+          `Seed run successfully! ${result.proofs.length} postcard(s) created.`
         )
       }
       return response.redirect().toRoute('seeds.show', { id: seed.id })
@@ -493,6 +378,9 @@ export default class SeedsController {
       description: addr.description || '',
     }))
 
+    // Format nextRunAt for datetime-local input (YYYY-MM-DDTHH:mm)
+    const nextRunAtFormatted = seed.nextRunAt ? seed.nextRunAt.toFormat("yyyy-MM-dd'T'HH:mm") : ''
+
     const seedData = {
       id: seed.id,
       name: seed.name,
@@ -500,6 +388,7 @@ export default class SeedsController {
       backTemplateId: seed.backTemplateId,
       cadence: seed.cadence,
       status: seed.status,
+      nextRunAt: nextRunAtFormatted,
       addresses: addressesData,
     }
 
@@ -562,6 +451,25 @@ export default class SeedsController {
       if (data.status) {
         seed.status = data.status
       }
+
+      // Handle nextRunAt - convert from datetime-local string to DateTime or null
+      if (data.nextRunAt && data.nextRunAt.trim() !== '') {
+        // Parse datetime-local format (YYYY-MM-DDTHH:mm) to DateTime
+        const parsed = DateTime.fromISO(data.nextRunAt, { zone: 'utc' })
+        if (parsed.isValid) {
+          seed.nextRunAt = parsed
+        } else {
+          logger.warn('Invalid nextRunAt format', {
+            seedId: seed.id,
+            nextRunAt: data.nextRunAt,
+          })
+          // Keep existing value if parsing fails
+        }
+      } else {
+        // Empty string means clear the next run date
+        seed.nextRunAt = null
+      }
+
       await seed.save()
 
       logger.info('Seed updated successfully', {

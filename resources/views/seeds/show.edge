@@ -109,6 +109,14 @@
               <dt class="text-sm font-medium text-gray-500">Cadence</dt>
               <dd class="mt-1 text-sm text-gray-900">{{ seed.cadence }}</dd>
             </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Last Run</dt>
+              <dd class="mt-1 text-sm text-gray-900">{{ seed.lastRunAt || 'Never' }}</dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Next Run</dt>
+              <dd class="mt-1 text-sm text-gray-900">{{ seed.nextRunAt || 'Not scheduled' }}</dd>
+            </div>
           </dl>
 
           <div class="border-t pt-4 mt-4">

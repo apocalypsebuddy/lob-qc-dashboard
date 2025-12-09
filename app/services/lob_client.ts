@@ -67,7 +67,13 @@ export default class LobClient {
   static async createPostcard(
     user: User,
     params: CreatePostcardParams
-  ): Promise<{ id: string; url: string; thumbnail_url: string; front_thumbnail_url: string; back_thumbnail_url: string | null }> {
+  ): Promise<{
+    id: string
+    url: string
+    thumbnail_url: string
+    front_thumbnail_url: string
+    back_thumbnail_url: string | null
+  }> {
     if (!user.lobApiKey) {
       throw new Error('User does not have a Lob API key configured')
     }
@@ -203,7 +209,8 @@ export default class LobClient {
     if (data.thumbnails && data.thumbnails.length > 0) {
       // Extract front thumbnail (first object) - use large size
       const frontThumbnail = data.thumbnails[0]
-      frontThumbnailUrl = frontThumbnail.large || frontThumbnail.medium || frontThumbnail.small || ''
+      frontThumbnailUrl =
+        frontThumbnail.large || frontThumbnail.medium || frontThumbnail.small || ''
 
       // For backward compatibility, use front thumbnail as the main thumbnail
       thumbnailUrl = frontThumbnailUrl

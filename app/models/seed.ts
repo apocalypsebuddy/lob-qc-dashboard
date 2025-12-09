@@ -45,6 +45,12 @@ export default class Seed extends BaseModel {
   @column()
   declare status: 'active' | 'paused'
 
+  @column.dateTime({ columnName: 'last_run_at' })
+  declare lastRunAt: DateTime | null
+
+  @column.dateTime({ columnName: 'next_run_at' })
+  declare nextRunAt: DateTime | null
+
   @column({
     prepare: (value: any) => JSON.stringify(value),
     consume: (value: any) => (typeof value === 'string' ? JSON.parse(value) : value),
@@ -62,4 +68,21 @@ export default class Seed extends BaseModel {
 
   @hasMany(() => Proof)
   declare proofs: HasMany<typeof Proof>
+
+  /**
+   * Compute the next run based on the current cadence.
+   * Returns null for one_time seeds.
+   */
+  public computeNextRun(from: DateTime = DateTime.utc()): DateTime | null {
+    switch (this.cadence) {
+      case 'one_time':
+        return null
+      case 'weekly':
+        return from.plus({ weeks: 1 })
+      case 'monthly':
+        return from.plus({ months: 1 })
+      default:
+        return null
+    }
+  }
 }

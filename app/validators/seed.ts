@@ -31,6 +31,7 @@ export const updateSeedValidator = vine.compile(
     backTemplateId: vine.string().minLength(1),
     cadence: vine.enum(['one_time', 'weekly', 'monthly']).optional(),
     status: vine.enum(['active', 'paused']).optional(),
+    nextRunAt: vine.string().optional(),
     addresses: vine.array(addressSchema).minLength(1),
   })
 )
