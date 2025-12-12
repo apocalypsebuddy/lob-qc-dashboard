@@ -240,7 +240,10 @@ export default class ProofsController {
 
   async showUploadForm({ params, view, auth, request }: HttpContext) {
     const user = auth.getUserOrFail()
-    const proof = await Proof.query().where('id', params.id).where('user_id', user.id).firstOrFail()
+    const proof = await Proof.query()
+      .where('public_id', params.publicId)
+      .where('user_id', user.id)
+      .firstOrFail()
 
     const proofData = {
       id: proof.id,
