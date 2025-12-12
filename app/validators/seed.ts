@@ -17,8 +17,8 @@ const addressSchema = vine.object({
 export const createSeedValidator = vine.compile(
   vine.object({
     name: vine.string().minLength(1),
-    frontTemplateId: vine.string().minLength(1),
-    backTemplateId: vine.string().minLength(1),
+    front: vine.string().minLength(1).optional(),
+    back: vine.string().minLength(1).optional(),
     cadence: vine.enum(['one_time', 'weekly', 'monthly']).optional(),
     addresses: vine.array(addressSchema).minLength(1),
   })
@@ -27,8 +27,8 @@ export const createSeedValidator = vine.compile(
 export const updateSeedValidator = vine.compile(
   vine.object({
     name: vine.string().minLength(1),
-    frontTemplateId: vine.string().minLength(1),
-    backTemplateId: vine.string().minLength(1),
+    front: vine.string().minLength(1).optional(),
+    back: vine.string().minLength(1).optional(),
     cadence: vine.enum(['one_time', 'weekly', 'monthly']).optional(),
     status: vine.enum(['active', 'paused']).optional(),
     nextRunAt: vine.string().optional(),

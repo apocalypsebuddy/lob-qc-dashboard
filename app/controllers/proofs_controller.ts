@@ -67,7 +67,9 @@ export default class ProofsController {
       id: proof.id,
       seedId: proof.seedId,
       seedName: proof.seedName || (proof.seed ? proof.seed.name : 'Unknown Seed'),
-      seedShowUrl: proof.seedId ? router.makeUrl('seeds.show', { id: proof.seedId }) : null,
+      seedShowUrl: proof.seed?.publicId
+        ? router.makeUrl('seeds.show', { publicId: proof.seed.publicId })
+        : null,
       publicId: proof.publicId,
       status: proof.status,
       frontThumbnailUrl:
@@ -75,8 +77,8 @@ export default class ProofsController {
       createdAt: proof.createdAt.toFormat('MMM dd, yyyy HH:mm'),
       mailedAt: proof.mailedAt ? proof.mailedAt.toFormat('MMM dd, yyyy') : null,
       deliveredAt: proof.deliveredAt ? proof.deliveredAt.toFormat('MMM dd, yyyy') : null,
-      showUrl: router.makeUrl('proofs.show', { id: proof.id }),
-      deleteUrl: router.makeUrl('proofs.destroy', { id: proof.id }),
+      showUrl: router.makeUrl('proofs.show', { publicId: proof.publicId }),
+      deleteUrl: router.makeUrl('proofs.destroy', { publicId: proof.publicId }),
     }))
 
     // Encode proofs data as base64 to avoid HTML escaping issues
@@ -96,7 +98,7 @@ export default class ProofsController {
   async show({ params, view, auth, request }: HttpContext) {
     const user = auth.getUserOrFail()
     const proof = await Proof.query()
-      .where('id', params.id)
+      .where('public_id', params.publicId)
       .where('user_id', user.id)
       .preload('seed')
       .firstOrFail()
@@ -104,7 +106,9 @@ export default class ProofsController {
     // Handle orphaned proofs (seedId is null)
     const isOrphaned = proof.seedId === null
     const seedName = proof.seedName || (proof.seed ? proof.seed.name : 'Unknown Seed')
-    const seedShowUrl = proof.seedId ? router.makeUrl('seeds.show', { id: proof.seedId }) : null
+    const seedShowUrl = proof.seed?.publicId
+      ? router.makeUrl('seeds.show', { publicId: proof.seed.publicId })
+      : null
 
     // Fetch additional details from Lob API
     let lobDetails = null
@@ -177,9 +181,9 @@ export default class ProofsController {
       qualityRating: proof.qualityRating,
       printerVendor: proof.printerVendor,
       notes: proof.notes,
-      uploadUrl: router.makeUrl('proofs.upload', { id: proof.id }),
-      updateUrl: router.makeUrl('proofs.update', { id: proof.id }),
-      updateStatusUrl: router.makeUrl('proofs.updateStatus', { id: proof.id }),
+      uploadUrl: router.makeUrl('proofs.upload', { publicId: proof.publicId }),
+      updateUrl: router.makeUrl('proofs.update', { publicId: proof.publicId }),
+      updateStatusUrl: router.makeUrl('proofs.updateStatus', { publicId: proof.publicId }),
       lobDetails,
     }
 
@@ -198,7 +202,7 @@ export default class ProofsController {
       logger.info('Updating proof review', { proofId: params.id, userId: user.id })
 
       const proof = await Proof.query()
-        .where('id', params.id)
+        .where('public_id', params.publicId)
         .where('user_id', user.id)
         .firstOrFail()
 
@@ -225,7 +229,7 @@ export default class ProofsController {
       return response.redirect().back()
     } catch (error: any) {
       logger.error('Error updating proof review', {
-        proofId: params.id,
+        proofPublicId: params.publicId,
         error: error.message,
         stack: error.stack,
         code: error.code,
@@ -240,8 +244,8 @@ export default class ProofsController {
 
     const proofData = {
       id: proof.id,
-      showUrl: router.makeUrl('proofs.show', { id: proof.id }),
-      uploadUrl: router.makeUrl('proofs.uploadLiveProof', { id: proof.id }),
+      showUrl: router.makeUrl('proofs.show', { publicId: proof.publicId }),
+      uploadUrl: router.makeUrl('proofs.uploadLiveProof', { publicId: proof.publicId }),
     }
 
     const csrfToken = request.csrfToken
@@ -255,7 +259,7 @@ export default class ProofsController {
       logger.info('Uploading live proof', { proofId: params.id, userId: user.id })
 
       const proof = await Proof.query()
-        .where('id', params.id)
+        .where('public_id', params.publicId)
         .where('user_id', user.id)
         .firstOrFail()
       logger.info('Proof found for upload', {
@@ -338,10 +342,10 @@ export default class ProofsController {
         logger.warn('Failed to clean up temp file', { tempPath, error: error.message })
       }
 
-      return response.redirect().toRoute('proofs.show', { id: proof.id })
+      return response.redirect().toRoute('proofs.show', { publicId: proof.publicId })
     } catch (error: any) {
       logger.error('Error uploading live proof', {
-        proofId: params.id,
+        proofPublicId: params.publicId,
         error: error.message,
         stack: error.stack,
       })
@@ -355,7 +359,7 @@ export default class ProofsController {
       logger.info('Updating proof status (dev)', { proofId: params.id, userId: user.id })
 
       const proof = await Proof.query()
-        .where('id', params.id)
+        .where('public_id', params.publicId)
         .where('user_id', user.id)
         .firstOrFail()
 
@@ -378,7 +382,7 @@ export default class ProofsController {
       return response.redirect().back()
     } catch (error: any) {
       logger.error('Error updating proof status', {
-        proofId: params.id,
+        proofPublicId: params.publicId,
         error: error.message,
         stack: error.stack,
         code: error.code,
@@ -396,7 +400,7 @@ export default class ProofsController {
       logger.info('Deleting proof', { proofId: params.id, userId: user.id })
 
       const proof = await Proof.query()
-        .where('id', params.id)
+        .where('public_id', params.publicId)
         .where('user_id', user.id)
         .firstOrFail()
 
@@ -404,7 +408,7 @@ export default class ProofsController {
       await proof.delete()
 
       logger.info('Proof deleted successfully', {
-        proofId: params.id,
+        proofPublicId: params.publicId,
         userId: user.id,
         seedId,
       })
@@ -414,26 +418,26 @@ export default class ProofsController {
       // Check referrer to determine redirect destination
       const referer = request.header('referer') || ''
       // If coming from a seed show page, redirect back to that seed page
-      // Match /seeds/:id pattern (capture ID before any query params or fragments)
+      // Match /seeds/:publicId pattern (capture publicId before any query params or fragments)
       const seedShowMatch = referer.match(/\/seeds\/([^\/\?\#]+)/)
       if (seedShowMatch && seedShowMatch[1]) {
-        const refererSeedId = seedShowMatch[1]
+        const refererSeedPublicId = seedShowMatch[1]
         logger.info('Redirecting to seed show page based on referer', {
-          refererSeedId,
+          refererSeedPublicId,
           referer,
-          proofId: params.id,
+          proofPublicId: params.publicId,
         })
-        return response.redirect().toRoute('seeds.show', { id: refererSeedId })
+        return response.redirect().toRoute('seeds.show', { publicId: refererSeedPublicId })
       }
 
       // Otherwise, redirect to proofs index
       logger.info('Redirecting to proofs index', {
-        proofId: params.id,
+        proofPublicId: params.publicId,
       })
       return response.redirect().toRoute('proofs.index')
     } catch (error: any) {
       logger.error('Error deleting proof', {
-        proofId: params.id,
+        proofPublicId: params.publicId,
         userId: auth.user?.id,
         error: error.message,
         stack: error.stack,

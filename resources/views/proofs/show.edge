@@ -3,8 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Proof Details - Seeds Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>
+      Proof Details - Seeds Dashboard
+    </title>
+    <script src="https://cdn.tailwindcss.com">
+
+    </script>
   </head>
   <body class="bg-gray-50 min-h-screen">
     <nav class="bg-white shadow-sm border-b">
@@ -15,9 +19,18 @@
               <a href="{{ route('home') }}" class="text-xl font-bold text-gray-900">Seeds Dashboard</a>
             </div>
             <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <a href="{{ route('seeds.index') }}" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Seeds</a>
-              <a href="{{ route('proofs.index') }}" class="border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Proofs</a>
-              <a href="{{ route('settings.edit') }}" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Settings</a>
+              <a
+                href="{{ route('seeds.index') }}"
+                class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              >Seeds</a>
+              <a
+                href="{{ route('proofs.index') }}"
+                class="border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              >Proofs</a>
+              <a
+                href="{{ route('settings.edit') }}"
+                class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              >Settings</a>
             </div>
           </div>
           <div class="flex items-center">
@@ -35,8 +48,14 @@
         <div class="mb-6">
           <a href="{{ route('proofs.index') }}" class="text-blue-600 hover:text-blue-800 mb-4 inline-block">← Back to Proofs</a>
           <div class="flex justify-between items-center">
-            <h1 class="text-3xl font-bold">Proof Details</h1>
-            <form method="POST" action="{{ route('proofs.destroy', { id: proof.id }) }}" onsubmit="return confirm('Are you sure you want to delete this proof? This action cannot be undone.');">
+            <h1 class="text-3xl font-bold">
+              Proof Details
+            </h1>
+            <form
+              method="POST"
+              action="{{ route('proofs.destroy', { publicId: proof.publicId }) }}"
+              onsubmit="return confirm('Are you sure you want to delete this proof? This action cannot be undone.');"
+            >
               <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
               <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md">
                 Delete Proof
@@ -47,16 +66,21 @@
 
         <script>
           // Declare proof data once at the top for reuse across all script blocks
-          const proofBase64 = '{{ proofBase64 }}';
+          const proofBase64 = "{{ proofBase64 }}";
+
           const proof = JSON.parse(atob(proofBase64));
         </script>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div class="bg-white shadow rounded-lg p-6">
-            <h2 class="text-xl font-semibold mb-4">Proof Information</h2>
+            <h2 class="text-xl font-semibold mb-4">
+              Proof Information
+            </h2>
             <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               <div>
-                <dt class="text-sm font-medium text-gray-500">Seed</dt>
+                <dt class="text-sm font-medium text-gray-500">
+                  Seed
+                </dt>
                 <dd class="mt-1 text-sm text-gray-900">
                   @if(proof.seedShowUrl)
                     <a href="{{ proof.seedShowUrl }}" class="text-blue-600 hover:text-blue-800 underline">{{ proof.seedName }}</a>
@@ -69,130 +93,152 @@
                 </dd>
               </div>
               <div>
-                <dt class="text-sm font-medium text-gray-500">Status</dt>
+                <dt class="text-sm font-medium text-gray-500">
+                  Status
+                </dt>
                 <dd class="mt-1">
                   <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">{{ proof.status }}</span>
                 </dd>
               </div>
               @if(proof.publicId)
                 <div>
-                  <dt class="text-sm font-medium text-gray-500">Public ID</dt>
-                  <dd class="mt-1 text-sm text-gray-900 font-mono">{{ proof.publicId }}</dd>
+                  <dt class="text-sm font-medium text-gray-500">
+                    Public ID
+                  </dt>
+                  <dd class="mt-1 text-sm text-gray-900 font-mono">
+                    {{ proof.publicId }}
+                  </dd>
                 </div>
               @endif
-              <div id="resource-id"></div>
-              <div id="tracking-number"></div>
-              <div id="delivered-at"></div>
-              <div id="lob-details"></div>
+              <div id="resource-id">
+              </div>
+              <div id="tracking-number">
+              </div>
+              <div id="delivered-at">
+              </div>
+              <div id="lob-details">
+              </div>
             </dl>
             <script>
               if (proof.resourceId) {
-                document.getElementById('resource-id').innerHTML = `
-                  <div>
-                    <dt class="text-sm font-medium text-gray-500">Resource ID</dt>
-                    <dd class="mt-1 text-sm text-gray-900 font-mono">
-                      <a href="https://dashboard.lob.com/postcards/${proof.resourceId}" target="_blank" class="text-blue-600 hover:text-blue-800">${proof.resourceId}</a>
-                    </dd>
-                  </div>
-                `;
+                document.getElementById("resource-id").innerHTML = `
+                                <div>
+                                  <dt class="text-sm font-medium text-gray-500">Resource ID</dt>
+                                  <dd class="mt-1 text-sm text-gray-900 font-mono">
+                                    <a href="https://dashboard.lob.com/postcards/${proof.resourceId}" target="_blank" class="text-blue-600 hover:text-blue-800">${proof.resourceId}</a>
+                                  </dd>
+                                </div>
+                              `;
               }
+
               if (proof.trackingNumber) {
-                document.getElementById('tracking-number').innerHTML = `
-                  <div>
-                    <dt class="text-sm font-medium text-gray-500">Tracking Number</dt>
-                    <dd class="mt-1 text-sm text-gray-900">${proof.trackingNumber}</dd>
-                  </div>
-                `;
+                document.getElementById("tracking-number").innerHTML = `
+                                <div>
+                                  <dt class="text-sm font-medium text-gray-500">Tracking Number</dt>
+                                  <dd class="mt-1 text-sm text-gray-900">${proof.trackingNumber}</dd>
+                                </div>
+                              `;
               }
+
               if (proof.deliveredAt) {
-                document.getElementById('delivered-at').innerHTML = `
-                  <div>
-                    <dt class="text-sm font-medium text-gray-500">Delivered At</dt>
-                    <dd class="mt-1 text-sm text-gray-900">${proof.deliveredAt}</dd>
-                  </div>
-                `;
+                document.getElementById("delivered-at").innerHTML = `
+                                <div>
+                                  <dt class="text-sm font-medium text-gray-500">Delivered At</dt>
+                                  <dd class="mt-1 text-sm text-gray-900">${proof.deliveredAt}</dd>
+                                </div>
+                              `;
               }
+
               if (proof.lobDetails) {
                 const details = proof.lobDetails;
-                let detailsHtml = '';
+                let detailsHtml = "";
                 if (details.size) {
                   detailsHtml += `
-                    <div>
-                      <dt class="text-sm font-medium text-gray-500">Size</dt>
-                      <dd class="mt-1 text-sm text-gray-900">${details.size}</dd>
-                    </div>
-                  `;
+                                  <div>
+                                    <dt class="text-sm font-medium text-gray-500">Size</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">${details.size}</dd>
+                                  </div>
+                                `;
                 }
                 if (details.mailType) {
                   detailsHtml += `
-                    <div>
-                      <dt class="text-sm font-medium text-gray-500">Mail Type</dt>
-                      <dd class="mt-1 text-sm text-gray-900">${details.mailType}</dd>
-                    </div>
-                  `;
+                                  <div>
+                                    <dt class="text-sm font-medium text-gray-500">Mail Type</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">${details.mailType}</dd>
+                                  </div>
+                                `;
                 }
                 if (details.dateCreated) {
                   detailsHtml += `
-                    <div>
-                      <dt class="text-sm font-medium text-gray-500">Date Created</dt>
-                      <dd class="mt-1 text-sm text-gray-900">${details.dateCreated}</dd>
-                    </div>
-                  `;
+                                  <div>
+                                    <dt class="text-sm font-medium text-gray-500">Date Created</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">${details.dateCreated}</dd>
+                                  </div>
+                                `;
                 }
                 if (details.sendDate) {
                   detailsHtml += `
-                    <div>
-                      <dt class="text-sm font-medium text-gray-500">Send Date</dt>
-                      <dd class="mt-1 text-sm text-gray-900">${details.sendDate}</dd>
-                    </div>
-                  `;
+                                  <div>
+                                    <dt class="text-sm font-medium text-gray-500">Send Date</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">${details.sendDate}</dd>
+                                  </div>
+                                `;
                 }
                 if (details.expectedDeliveryDate) {
                   detailsHtml += `
-                    <div>
-                      <dt class="text-sm font-medium text-gray-500">Expected Delivery Date Range</dt>
-                      <dd class="mt-1 text-sm text-gray-900">${details.expectedDeliveryDate}</dd>
-                    </div>
-                  `;
+                                  <div>
+                                    <dt class="text-sm font-medium text-gray-500">Expected Delivery Date Range</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">${details.expectedDeliveryDate}</dd>
+                                  </div>
+                                `;
                 }
                 if (detailsHtml) {
-                  document.getElementById('lob-details').innerHTML = detailsHtml;
+                  document.getElementById("lob-details").innerHTML = detailsHtml;
                 }
               }
             </script>
           </div>
 
           <div class="bg-white shadow rounded-lg p-6">
-            <h2 class="text-xl font-semibold mb-4">Lob Rendered Proofs</h2>
+            <h2 class="text-xl font-semibold mb-4">
+              Lob Rendered Proofs
+            </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <h3 class="text-sm font-medium text-gray-700 mb-2">Front</h3>
-                <div id="front-thumbnail"></div>
+                <h3 class="text-sm font-medium text-gray-700 mb-2">
+                  Front
+                </h3>
+                <div id="front-thumbnail">
+                </div>
                 <script>
                   if (proof.frontThumbnailUrl) {
                     const frontThumbnailUrl = proof.frontThumbnailUrl;
-                    document.getElementById('front-thumbnail').innerHTML = `<a href="${frontThumbnailUrl}" target="_blank" rel="noopener noreferrer"><img src="${frontThumbnailUrl}" alt="Postcard front thumbnail" class="w-full rounded-lg shadow-sm hover:opacity-90 cursor-pointer" /></a>`;
+                    document.getElementById("front-thumbnail").innerHTML = `<a href="${frontThumbnailUrl}" target="_blank" rel="noopener noreferrer"><img src="${frontThumbnailUrl}" alt="Postcard front thumbnail" class="w-full rounded-lg shadow-sm hover:opacity-90 cursor-pointer" /></a>`;
                   } else if (proof.thumbnailUrl) {
                     // Fallback to old thumbnailUrl for backward compatibility
                     const thumbnailUrl = proof.thumbnailUrl;
-                    document.getElementById('front-thumbnail').innerHTML = `<a href="${thumbnailUrl}" target="_blank" rel="noopener noreferrer"><img src="${thumbnailUrl}" alt="Postcard thumbnail" class="w-full rounded-lg shadow-sm hover:opacity-90 cursor-pointer" /></a>`;
+                    document.getElementById("front-thumbnail").innerHTML = `<a href="${thumbnailUrl}" target="_blank" rel="noopener noreferrer"><img src="${thumbnailUrl}" alt="Postcard thumbnail" class="w-full rounded-lg shadow-sm hover:opacity-90 cursor-pointer" /></a>`;
                   }
                 </script>
               </div>
               <div>
-                <h3 class="text-sm font-medium text-gray-700 mb-2">Back</h3>
-                <div id="back-thumbnail"></div>
+                <h3 class="text-sm font-medium text-gray-700 mb-2">
+                  Back
+                </h3>
+                <div id="back-thumbnail">
+                </div>
                 <script>
                   if (proof.backThumbnailUrl) {
                     const backThumbnailUrl = proof.backThumbnailUrl;
-                    document.getElementById('back-thumbnail').innerHTML = `<a href="${backThumbnailUrl}" target="_blank" rel="noopener noreferrer"><img src="${backThumbnailUrl}" alt="Postcard back thumbnail" class="w-full rounded-lg shadow-sm hover:opacity-90 cursor-pointer" /></a>`;
+                    document.getElementById("back-thumbnail").innerHTML = `<a href="${backThumbnailUrl}" target="_blank" rel="noopener noreferrer"><img src="${backThumbnailUrl}" alt="Postcard back thumbnail" class="w-full rounded-lg shadow-sm hover:opacity-90 cursor-pointer" /></a>`;
                   } else {
-                    document.getElementById('back-thumbnail').innerHTML = `<p class="text-sm text-gray-500 italic">No back thumbnail available</p>`;
+                    document.getElementById("back-thumbnail").innerHTML = `<p class="text-sm text-gray-500 italic">No back thumbnail available</p>`;
                   }
                 </script>
               </div>
             </div>
-            <div id="lob-urls" class="mt-4 pt-4 border-t border-gray-200"></div>
+            <div id="lob-urls" class="mt-4 pt-4 border-t border-gray-200">
+            </div>
             <script>
               if (proof.lobDetails && (proof.lobDetails.url || proof.lobDetails.rawUrl)) {
                 let urlsHtml = '<div class="flex flex-col gap-2">';
@@ -202,55 +248,84 @@
                 if (proof.lobDetails.rawUrl) {
                   urlsHtml += `<a href="${proof.lobDetails.rawUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 text-sm">View Raw PDF</a>`;
                 }
-                urlsHtml += '</div>';
-                document.getElementById('lob-urls').innerHTML = urlsHtml;
+                urlsHtml += "</div>";
+                document.getElementById("lob-urls").innerHTML = urlsHtml;
               }
             </script>
           </div>
         </div>
 
-        <div id="live-proof"></div>
+        <div id="live-proof">
+        </div>
         <script>
           if (proof.liveProofUrl) {
-            document.getElementById('live-proof').innerHTML = `
-              <div class="mt-6 bg-white shadow rounded-lg p-6">
-                <h2 class="text-xl font-semibold mb-4">Live Proof</h2>
-                <img src="${proof.liveProofUrl}" alt="Live proof" class="max-w-full rounded-lg shadow-sm" />
-              </div>
-            `;
+            document.getElementById("live-proof").innerHTML = `
+                        <div class="mt-6 bg-white shadow rounded-lg p-6">
+                          <h2 class="text-xl font-semibold mb-4">Live Proof</h2>
+                          <img src="${proof.liveProofUrl}" alt="Live proof" class="max-w-full rounded-lg shadow-sm" />
+                        </div>
+                      `;
           }
         </script>
 
         <div class="mt-6 bg-white shadow rounded-lg p-6">
-          <h2 class="text-xl font-semibold mb-4">Live Proofs</h2>
-          <a href="{{ proof.uploadUrl }}" class="inline-block bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md">
+          <h2 class="text-xl font-semibold mb-4">
+            Live Proofs
+          </h2>
+          <a
+            href="{{ proof.uploadUrl }}"
+            class="inline-block bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md"
+          >
             Capture / Upload Live Proof
           </a>
         </div>
 
         <div class="mt-6 bg-yellow-50 border border-yellow-200 shadow rounded-lg p-6">
-          <h2 class="text-xl font-semibold mb-2">Dev: Manual Status Update</h2>
-          <p class="text-sm text-yellow-800 mb-4">For development purposes only - manually update proof status</p>
+          <h2 class="text-xl font-semibold mb-2">
+            Dev: Manual Status Update
+          </h2>
+          <p class="text-sm text-yellow-800 mb-4">
+            For development purposes only - manually update proof status
+          </p>
           <form method="POST" action="{{ proof.updateStatusUrl }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
             <div class="flex items-end gap-4">
               <div class="flex-1">
                 <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select id="status" name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                  <option value="created">created</option>
-                  <option value="in_production">in_production</option>
-                  <option value="mailed">mailed</option>
-                  <option value="delivered">delivered</option>
-                  <option value="awaiting_review">awaiting_review</option>
-                  <option value="completed">completed</option>
+                <select
+                  id="status"
+                  name="status"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="created">
+                    created
+                  </option>
+                  <option value="in_production">
+                    in_production
+                  </option>
+                  <option value="mailed">
+                    mailed
+                  </option>
+                  <option value="delivered">
+                    delivered
+                  </option>
+                  <option value="awaiting_review">
+                    awaiting_review
+                  </option>
+                  <option value="completed">
+                    completed
+                  </option>
                 </select>
                 <script>
                   if (proof.status) {
-                    document.getElementById('status').value = proof.status;
+                    document.getElementById("status").value = proof.status;
                   }
                 </script>
               </div>
-              <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded-md">
+              <button
+                type="submit"
+                class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded-md"
+              >
                 Update Status
               </button>
             </div>
@@ -258,24 +333,42 @@
         </div>
 
         <div class="mt-6 bg-white shadow rounded-lg p-6">
-          <h2 class="text-xl font-semibold mb-4">Quality Review</h2>
+          <h2 class="text-xl font-semibold mb-4">
+            Quality Review
+          </h2>
           <form method="POST" action="{{ proof.updateUrl }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
 
             <div class="mb-4">
               <label for="qualityRating" class="block text-sm font-medium text-gray-700 mb-1">Quality Rating (1-5)</label>
-              <select id="qualityRating" name="qualityRating" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                <option value="">Select rating</option>
-                <option value="1">1 - Poor</option>
-                <option value="2">2 - Fair</option>
-                <option value="3">3 - Good</option>
-                <option value="4">4 - Very Good</option>
-                <option value="5">5 - Excellent</option>
+              <select
+                id="qualityRating"
+                name="qualityRating"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">
+                  Select rating
+                </option>
+                <option value="1">
+                  1 - Poor
+                </option>
+                <option value="2">
+                  2 - Fair
+                </option>
+                <option value="3">
+                  3 - Good
+                </option>
+                <option value="4">
+                  4 - Very Good
+                </option>
+                <option value="5">
+                  5 - Excellent
+                </option>
               </select>
             </div>
             <script>
               if (proof.qualityRating) {
-                document.getElementById('qualityRating').value = proof.qualityRating.toString();
+                document.getElementById("qualityRating").value = proof.qualityRating.toString();
               }
             </script>
 

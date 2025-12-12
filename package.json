@@ -62,6 +62,8 @@
     "@adonisjs/shield": "^8.2.0",
     "@adonisjs/static": "^1.1.1",
     "@adonisjs/vite": "^4.0.0",
+    "@aws-sdk/client-s3": "^3.947.0",
+    "@aws-sdk/s3-request-presigner": "^3.948.0",
     "@vinejs/vine": "^4.1.0",
     "edge.js": "^6.3.0",
     "luxon": "^3.7.2",

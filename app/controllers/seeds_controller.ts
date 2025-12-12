@@ -2,9 +2,14 @@ import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
 import router from '@adonisjs/core/services/router'
 import { DateTime } from 'luxon'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { unlink } from 'node:fs/promises'
+import { randomBytes } from 'node:crypto'
 import Seed from '#models/seed'
 import Proof from '#models/proof'
 import SeedService from '#services/seed_service'
+import S3Service from '#services/s3_service'
 import { createSeedValidator, updateSeedValidator } from '#validators/seed'
 
 export default class SeedsController {
@@ -38,9 +43,9 @@ export default class SeedsController {
         proofCount: seed.proofs.length,
         statusClass:
           seed.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800',
-        showUrl: router.makeUrl('seeds.show', { id: seed.id }),
-        editUrl: router.makeUrl('seeds.edit', { id: seed.id }),
-        deleteUrl: router.makeUrl('seeds.destroy', { id: seed.id }),
+        showUrl: router.makeUrl('seeds.show', { publicId: seed.publicId }),
+        editUrl: router.makeUrl('seeds.edit', { publicId: seed.publicId }),
+        deleteUrl: router.makeUrl('seeds.destroy', { publicId: seed.publicId }),
       }
     })
 
@@ -75,11 +80,97 @@ export default class SeedsController {
       })
 
       const data = await request.validateUsing(createSeedValidator)
+
+      // Handle file uploads for front and back
+      let frontValue = data.front || ''
+      let backValue = data.back || ''
+
+      // Handle front file upload
+      const frontFile = request.file('frontFile', {
+        size: '10mb',
+        extnames: ['jpg', 'jpeg', 'pdf'],
+      })
+
+      if (frontFile && frontFile.isValid) {
+        logger.info('Front file uploaded', {
+          fileName: frontFile.fileName,
+          size: frontFile.size,
+          extname: frontFile.extname,
+          userId: user.id,
+        })
+
+        // Save file to temp location
+        const tempDir = tmpdir()
+        await frontFile.move(tempDir, { overwrite: true })
+        const tempPath = join(tempDir, frontFile.fileName!)
+
+        try {
+          // Upload to S3
+          frontValue = await S3Service.uploadFile(tempPath, frontFile.fileName!, user.id)
+          logger.info('Front file uploaded to S3', { url: frontValue, userId: user.id })
+
+          // Clean up temp file
+          await unlink(tempPath).catch(() => {})
+        } catch (error: any) {
+          logger.error('Error uploading front file to S3', {
+            error: error.message,
+            userId: user.id,
+          })
+          // Clean up temp file
+          await unlink(tempPath).catch(() => {})
+          throw error
+        }
+      }
+
+      // Handle back file upload
+      const backFile = request.file('backFile', {
+        size: '10mb',
+        extnames: ['jpg', 'jpeg', 'pdf'],
+      })
+
+      if (backFile && backFile.isValid) {
+        logger.info('Back file uploaded', {
+          fileName: backFile.fileName,
+          size: backFile.size,
+          extname: backFile.extname,
+          userId: user.id,
+        })
+
+        // Save file to temp location
+        const tempDir = tmpdir()
+        await backFile.move(tempDir, { overwrite: true })
+        const tempPath = join(tempDir, backFile.fileName!)
+
+        try {
+          // Upload to S3
+          backValue = await S3Service.uploadFile(tempPath, backFile.fileName!, user.id)
+          logger.info('Back file uploaded to S3', { url: backValue, userId: user.id })
+
+          // Clean up temp file
+          await unlink(tempPath).catch(() => {})
+        } catch (error: any) {
+          logger.error('Error uploading back file to S3', {
+            error: error.message,
+            userId: user.id,
+          })
+          // Clean up temp file
+          await unlink(tempPath).catch(() => {})
+          throw error
+        }
+      }
+
+      // Validate that at least front or back is provided
+      if (!frontValue && !backValue) {
+        throw new Error(
+          'Either front or back must be provided (as template ID, URL, or file upload)'
+        )
+      }
+
       logger.info('Seed form validated', {
         seedName: data.name,
         userId: user.id,
-        frontTemplateId: data.frontTemplateId,
-        backTemplateId: data.backTemplateId,
+        front: frontValue,
+        back: backValue,
         cadence: data.cadence,
         addressesCount: data.addresses ? data.addresses.length : 0,
         addresses: JSON.stringify(data.addresses),
@@ -116,22 +207,27 @@ export default class SeedsController {
         nextRunAt = DateTime.utc()
       }
 
+      // Generate a unique 6-digit hexadecimal number for the seed public_id
+      const seedHex = randomBytes(3).toString('hex').toUpperCase()
+
       logger.info('Creating seed record', {
         userId: user.id,
         name: data.name,
-        frontTemplateId: data.frontTemplateId,
-        backTemplateId: data.backTemplateId,
+        front: frontValue,
+        back: backValue,
         cadence: cadence,
         nextRunAt: nextRunAt?.toISO(),
         addressesCount: toAddresses.length,
         toAddresses: JSON.stringify(toAddresses),
+        publicId: seedHex,
       })
 
       const seed = await Seed.create({
         userId: user.id,
         name: data.name,
-        frontTemplateId: data.frontTemplateId,
-        backTemplateId: data.backTemplateId,
+        publicId: seedHex,
+        front: frontValue,
+        back: backValue,
         cadence: cadence,
         toAddress: toAddresses,
         status: 'active',
@@ -146,7 +242,7 @@ export default class SeedsController {
         addressesCount: Array.isArray(seed.toAddress) ? seed.toAddress.length : 1,
       })
 
-      return response.redirect().toRoute('seeds.show', { id: seed.id })
+      return response.redirect().toRoute('seeds.show', { publicId: seed.publicId })
     } catch (error: any) {
       logger.error('Error creating seed', {
         userId: auth.user?.id,
@@ -165,7 +261,7 @@ export default class SeedsController {
   async show({ params, view, auth, request, session }: HttpContext) {
     const user = auth.getUserOrFail()
     const seed = await Seed.query()
-      .where('id', params.id)
+      .where('public_id', params.publicId)
       .where('user_id', user.id)
       .preload('proofs', (query) => {
         query.orderBy('created_at', 'desc')
@@ -177,14 +273,14 @@ export default class SeedsController {
       id: proof.id,
       seedId: proof.seedId,
       seedName: proof.seedName || seed.name,
-      seedShowUrl: router.makeUrl('seeds.show', { id: seed.id }),
+      seedShowUrl: router.makeUrl('seeds.show', { publicId: seed.publicId }),
       publicId: proof.publicId,
       status: proof.status,
       createdAt: proof.createdAt.toFormat('MMM dd, yyyy HH:mm'),
       mailedAt: proof.mailedAt ? proof.mailedAt.toFormat('MMM dd, yyyy') : null,
       deliveredAt: proof.deliveredAt ? proof.deliveredAt.toFormat('MMM dd, yyyy') : null,
-      showUrl: router.makeUrl('proofs.show', { id: proof.id }),
-      deleteUrl: router.makeUrl('proofs.destroy', { id: proof.id }),
+      showUrl: router.makeUrl('proofs.show', { publicId: proof.publicId }),
+      deleteUrl: router.makeUrl('proofs.destroy', { publicId: proof.publicId }),
     }))
 
     // Encode proofs data as base64 to avoid HTML escaping issues
@@ -211,9 +307,10 @@ export default class SeedsController {
 
     const seedData = {
       id: seed.id,
+      publicId: seed.publicId,
       name: seed.name,
-      frontTemplateId: seed.frontTemplateId,
-      backTemplateId: seed.backTemplateId,
+      front: seed.front,
+      back: seed.back,
       status: seed.status,
       cadence: seed.cadence,
       lastRunAt: seed.lastRunAt ? seed.lastRunAt.toFormat('MMM dd, yyyy HH:mm') : null,
@@ -224,8 +321,8 @@ export default class SeedsController {
       proofs: proofsData,
       proofsBase64,
       proofCount: seed.proofs.length,
-      runUrl: router.makeUrl('seeds.run', { id: seed.id }),
-      deleteUrl: router.makeUrl('seeds.destroy', { id: seed.id }),
+      runUrl: router.makeUrl('seeds.run', { publicId: seed.publicId }),
+      deleteUrl: router.makeUrl('seeds.destroy', { publicId: seed.publicId }),
     }
 
     // Get flash messages
@@ -252,9 +349,12 @@ export default class SeedsController {
   async run({ params, response, auth, session }: HttpContext) {
     try {
       const user = auth.getUserOrFail()
-      logger.info('Running seed', { seedId: params.id, userId: user.id })
+      logger.info('Running seed', { seedPublicId: params.publicId, userId: user.id })
 
-      const seed = await Seed.query().where('id', params.id).where('user_id', user.id).firstOrFail()
+      const seed = await Seed.query()
+        .where('public_id', params.publicId)
+        .where('user_id', user.id)
+        .firstOrFail()
       logger.info('Seed found', { seedId: seed.id, seedName: seed.name })
 
       if (!user.lobApiKey) {
@@ -310,11 +410,11 @@ export default class SeedsController {
           `Seed run successfully! ${result.proofs.length} postcard(s) created.`
         )
       }
-      return response.redirect().toRoute('seeds.show', { id: seed.id })
+      return response.redirect().toRoute('seeds.show', { publicId: seed.publicId })
     } catch (error: any) {
       // Enhanced error logging
       const errorDetails: any = {
-        seedId: params.id,
+        seedPublicId: params.publicId,
         errorMessage: error.message,
         errorName: error.name,
         errorCode: error.code,
@@ -362,7 +462,10 @@ export default class SeedsController {
 
   async edit({ params, view, auth, request }: HttpContext) {
     const user = auth.getUserOrFail()
-    const seed = await Seed.query().where('id', params.id).where('user_id', user.id).firstOrFail()
+    const seed = await Seed.query()
+      .where('public_id', params.publicId)
+      .where('user_id', user.id)
+      .firstOrFail()
 
     // Format addresses - handle both array and single object for backward compatibility
     const addresses = Array.isArray(seed.toAddress) ? seed.toAddress : [seed.toAddress]
@@ -385,9 +488,10 @@ export default class SeedsController {
 
     const seedData = {
       id: seed.id,
+      publicId: seed.publicId,
       name: seed.name,
-      frontTemplateId: seed.frontTemplateId,
-      backTemplateId: seed.backTemplateId,
+      front: seed.front,
+      back: seed.back,
       cadence: seed.cadence,
       status: seed.status,
       nextRunAt: nextRunAtFormatted,
@@ -406,17 +510,111 @@ export default class SeedsController {
   async update({ params, request, response, auth, session }: HttpContext) {
     try {
       const user = auth.getUserOrFail()
-      logger.info('Updating seed', { seedId: params.id, userId: user.id })
+      logger.info('Updating seed', { seedPublicId: params.publicId, userId: user.id })
 
-      const seed = await Seed.query().where('id', params.id).where('user_id', user.id).firstOrFail()
+      const seed = await Seed.query()
+        .where('public_id', params.publicId)
+        .where('user_id', user.id)
+        .firstOrFail()
 
       const data = await request.validateUsing(updateSeedValidator)
+
+      // Handle file uploads for front and back
+      let frontValue = data.front || seed.front
+      let backValue = data.back || seed.back
+
+      // Handle front file upload
+      const frontFile = request.file('frontFile', {
+        size: '10mb',
+        extnames: ['jpg', 'jpeg', 'pdf'],
+      })
+
+      if (frontFile && frontFile.isValid) {
+        logger.info('Front file uploaded for update', {
+          fileName: frontFile.fileName,
+          size: frontFile.size,
+          extname: frontFile.extname,
+          userId: user.id,
+          seedId: seed.id,
+        })
+
+        // Save file to temp location
+        const tempDir = tmpdir()
+        await frontFile.move(tempDir, { overwrite: true })
+        const tempPath = join(tempDir, frontFile.fileName!)
+
+        try {
+          // Upload to S3
+          frontValue = await S3Service.uploadFile(tempPath, frontFile.fileName!, user.id)
+          logger.info('Front file uploaded to S3', {
+            url: frontValue,
+            userId: user.id,
+            seedId: seed.id,
+          })
+
+          // Clean up temp file
+          await unlink(tempPath).catch(() => {})
+        } catch (error: any) {
+          logger.error('Error uploading front file to S3', {
+            error: error.message,
+            userId: user.id,
+            seedId: seed.id,
+          })
+          // Clean up temp file
+          await unlink(tempPath).catch(() => {})
+          throw error
+        }
+      }
+
+      // Handle back file upload
+      const backFile = request.file('backFile', {
+        size: '10mb',
+        extnames: ['jpg', 'jpeg', 'pdf'],
+      })
+
+      if (backFile && backFile.isValid) {
+        logger.info('Back file uploaded for update', {
+          fileName: backFile.fileName,
+          size: backFile.size,
+          extname: backFile.extname,
+          userId: user.id,
+          seedId: seed.id,
+        })
+
+        // Save file to temp location
+        const tempDir = tmpdir()
+        await backFile.move(tempDir, { overwrite: true })
+        const tempPath = join(tempDir, backFile.fileName!)
+
+        try {
+          // Upload to S3
+          backValue = await S3Service.uploadFile(tempPath, backFile.fileName!, user.id)
+          logger.info('Back file uploaded to S3', {
+            url: backValue,
+            userId: user.id,
+            seedId: seed.id,
+          })
+
+          // Clean up temp file
+          await unlink(tempPath).catch(() => {})
+        } catch (error: any) {
+          logger.error('Error uploading back file to S3', {
+            error: error.message,
+            userId: user.id,
+            seedId: seed.id,
+          })
+          // Clean up temp file
+          await unlink(tempPath).catch(() => {})
+          throw error
+        }
+      }
+
       logger.info('Seed update form validated', {
         seedId: seed.id,
         seedName: data.name,
         userId: user.id,
-        frontTemplateId: data.frontTemplateId,
-        backTemplateId: data.backTemplateId,
+        front: frontValue,
+        back: backValue,
         cadence: data.cadence,
         status: data.status,
         addressesCount: data.addresses ? data.addresses.length : 0,
@@ -446,8 +644,8 @@ export default class SeedsController {
       })
 
       seed.name = data.name
-      seed.frontTemplateId = data.frontTemplateId
-      seed.backTemplateId = data.backTemplateId
+      seed.front = frontValue
+      seed.back = backValue
       seed.cadence = data.cadence || 'one_time'
       seed.toAddress = toAddresses
       if (data.status) {
@@ -481,10 +679,10 @@ export default class SeedsController {
       })
 
       session.flash('success', 'Seed updated successfully!')
-      return response.redirect().toRoute('seeds.show', { id: seed.id })
+      return response.redirect().toRoute('seeds.show', { publicId: seed.publicId })
     } catch (error: any) {
       logger.error('Error updating seed', {
-        seedId: params.id,
+        seedPublicId: params.publicId,
         userId: auth.user?.id,
         error: error.message,
         errorName: error.name,
@@ -502,12 +700,15 @@ export default class SeedsController {
       const user = auth.getUserOrFail()
       const deleteProofs = request.input('delete_proofs') === 'true'
       logger.info('Deleting seed', {
-        seedId: params.id,
+        seedPublicId: params.publicId,
         userId: user.id,
         deleteProofs,
       })
 
-      const seed = await Seed.query().where('id', params.id).where('user_id', user.id).firstOrFail()
+      const seed = await Seed.query()
+        .where('public_id', params.publicId)
+        .where('user_id', user.id)
+        .firstOrFail()
 
       // Load proofs to check if any exist
       await seed.load('proofs')
@@ -542,7 +743,7 @@ export default class SeedsController {
       await seed.delete()
 
       logger.info('Seed deleted successfully', {
-        seedId: params.id,
+        seedPublicId: params.publicId,
         userId: user.id,
         deletedProofs: deleteProofs,
         proofCount,
@@ -559,7 +760,7 @@ export default class SeedsController {
       return response.redirect().toRoute('seeds.index')
     } catch (error: any) {
       logger.error('Error deleting seed', {
-        seedId: params.id,
+        seedPublicId: params.publicId,
         userId: auth.user?.id,
         error: error.message,
         stack: error.stack,

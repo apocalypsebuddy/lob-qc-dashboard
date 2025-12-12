@@ -1,6 +1,7 @@
 # Edge Template Pattern
 
 ## Overview
+
 Since Edge directives (`@layout`, `@section`, `@end`, `@if`, `@each`, etc.) are not being processed correctly, we use a pattern that works with Edge expressions only.
 
 ## Pattern Rules
@@ -18,14 +19,14 @@ Since Edge directives (`@layout`, `@section`, `@end`, `@if`, `@each`, etc.) are 
 async methodName({ view, request, auth }: HttpContext) {
   // Get CSRF token
   const csrfToken = request.csrfToken
-  
+
   // Format data for template (pre-process dates, generate URLs, etc.)
   const formattedData = data.map(item => ({
     ...item,
     createdAt: item.createdAt.toFormat('MMM dd, yyyy'),
     showUrl: router.makeUrl('route.name', { id: item.id }),
   }))
-  
+
   return view.render('template/name', { data: formattedData, csrfToken })
 }
 ```
@@ -76,15 +77,32 @@ Include this navigation in all authenticated pages:
           <a href="{{ route('home') }}" class="text-xl font-bold text-gray-900">Seeds Dashboard</a>
         </div>
         <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-          <a href="{{ route('seeds.index') }}" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Seeds</a>
-          <a href="{{ route('proofs.index') }}" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Proofs</a>
-          <a href="{{ route('settings.edit') }}" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Settings</a>
+          <a
+            href="{{ route('seeds.index') }}"
+            class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+            >Seeds</a
+          >
+          <a
+            href="{{ route('proofs.index') }}"
+            class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+            >Proofs</a
+          >
+          <a
+            href="{{ route('settings.edit') }}"
+            class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+            >Settings</a
+          >
         </div>
       </div>
       <div class="flex items-center">
         <form method="POST" action="{{ route('auth.logout') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
-          <button type="submit" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium">Logout</button>
+          <button
+            type="submit"
+            class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+          >
+            Logout
+          </button>
         </form>
       </div>
     </div>
@@ -95,9 +113,9 @@ Include this navigation in all authenticated pages:
 ## Examples
 
 See:
+
 - `resources/views/auth/login.edge` - Simple form
-- `resources/views/auth/register.edge` - Simple form  
+- `resources/views/auth/register.edge` - Simple form
 - `resources/views/seeds/index.edge` - List with JavaScript loop
 - `resources/views/seeds/create.edge` - Form with CSRF token
 - `resources/views/seeds/show.edge` - Detail page with nested data
-

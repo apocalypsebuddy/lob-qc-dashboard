@@ -5,6 +5,7 @@ import Seed from '#models/seed'
 import User from '#models/user'
 import Proof from '#models/proof'
 import LobClient from '#services/lob_client'
+import S3Service from '#services/s3_service'
 
 interface RunSeedResult {
   proofs: Proof[]
@@ -25,13 +26,16 @@ export default class SeedService {
       throw new Error('User does not have a Lob API key configured')
     }
 
+    // Refresh seed from database to ensure we have the latest data including public_id
+    await seed.refresh()
+
     // Ensure toAddress is an array
     const addresses = Array.isArray(seed.toAddress) ? seed.toAddress : [seed.toAddress]
 
     logger.info('Creating postcards via Lob API', {
       seedId: seed.id,
-      frontTemplateId: seed.frontTemplateId,
-      backTemplateId: seed.backTemplateId,
+      front: seed.front,
+      back: seed.back,
       addressCount: addresses.length,
     })
 
@@ -64,11 +68,39 @@ export default class SeedService {
           proofCompany,
         })
 
+        // Convert S3 URLs to presigned URLs if needed
+        let frontValue = seed.front || ''
+        let backValue = seed.back || ''
+
+        if (frontValue && S3Service.isS3Url(frontValue)) {
+          logger.info('Converting front S3 URL to presigned URL', {
+            seedId: seed.id,
+            originalUrl: frontValue,
+          })
+          frontValue = await S3Service.getPresignedUrl(frontValue)
+          logger.info('Front presigned URL generated', {
+            seedId: seed.id,
+            presignedUrlLength: frontValue.length,
+          })
+        }
+
+        if (backValue && S3Service.isS3Url(backValue)) {
+          logger.info('Converting back S3 URL to presigned URL', {
+            seedId: seed.id,
+            originalUrl: backValue,
+          })
+          backValue = await S3Service.getPresignedUrl(backValue)
+          logger.info('Back presigned URL generated', {
+            seedId: seed.id,
+            presignedUrlLength: backValue.length,
+          })
+        }
+
         const result = await LobClient.createPostcard(user, {
           toAddress: addressWithCompany,
-          frontTemplateId: seed.frontTemplateId,
-          backTemplateId: seed.backTemplateId,
-          seedName: seed.name,
+          front: frontValue,
+          back: backValue,
+          seedPublicId: seed.publicId || undefined,
         })
 
         logger.info('Postcard created successfully', {

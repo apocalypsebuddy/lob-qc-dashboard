@@ -3,8 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Proofs - Seeds Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>
+      Proofs - Seeds Dashboard
+    </title>
+    <script src="https://cdn.tailwindcss.com">
+
+    </script>
   </head>
   <body class="bg-gray-50 min-h-screen">
     <nav class="bg-white shadow-sm border-b">
@@ -15,9 +19,18 @@
               <a href="{{ route('home') }}" class="text-xl font-bold text-gray-900">Seeds Dashboard</a>
             </div>
             <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <a href="{{ route('seeds.index') }}" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Seeds</a>
-              <a href="{{ route('proofs.index') }}" class="border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Proofs</a>
-              <a href="{{ route('settings.edit') }}" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Settings</a>
+              <a
+                href="{{ route('seeds.index') }}"
+                class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              >Seeds</a>
+              <a
+                href="{{ route('proofs.index') }}"
+                class="border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              >Proofs</a>
+              <a
+                href="{{ route('settings.edit') }}"
+                class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              >Settings</a>
             </div>
           </div>
           <div class="flex items-center">
@@ -33,100 +46,121 @@
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <div class="px-4 py-8 sm:px-0">
         <div class="flex justify-between items-center mb-6">
-          <h1 class="text-3xl font-bold">Proofs</h1>
+          <h1 class="text-3xl font-bold">
+            Proofs
+          </h1>
           <div class="flex items-center gap-2">
             <label for="statusFilter" class="text-sm font-medium text-gray-700">Filter by Status:</label>
             <select
               id="statusFilter"
               class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
             >
-              <option value="all">All</option>
-              <option value="created">Created</option>
-              <option value="in_production">In Production</option>
-              <option value="mailed">Mailed</option>
-              <option value="delivered">Delivered</option>
-              <option value="awaiting_review">Awaiting Review</option>
-              <option value="completed">Completed</option>
+              <option value="all">
+                All
+              </option>
+              <option value="created">
+                Created
+              </option>
+              <option value="in_production">
+                In Production
+              </option>
+              <option value="mailed">
+                Mailed
+              </option>
+              <option value="delivered">
+                Delivered
+              </option>
+              <option value="awaiting_review">
+                Awaiting Review
+              </option>
+              <option value="completed">
+                Completed
+              </option>
             </select>
             <script>
               // Set the selected value based on the current filter
-              const currentStatus = '{{ statusFilter }}';
+              const currentStatus = "{{ statusFilter }}";
+
               if (currentStatus) {
-                document.getElementById('statusFilter').value = currentStatus;
+                document.getElementById("statusFilter").value = currentStatus;
               }
             </script>
           </div>
         </div>
 
-        <div id="proofs-content"></div>
+        <div id="proofs-content">
+        </div>
         <script>
-          const proofsBase64 = '{{ proofsBase64 }}';
-          const csrfToken = '{{ csrfToken }}';
+          const proofsBase64 = "{{ proofsBase64 }}";
+
+          const csrfToken = "{{ csrfToken }}";
+
           const proofs = JSON.parse(atob(proofsBase64));
-          const container = document.getElementById('proofs-content');
+
+          const container = document.getElementById("proofs-content");
 
           if (!proofs || proofs.length === 0) {
             container.innerHTML = '<div class="bg-white shadow rounded-lg p-8 text-center"><p class="text-gray-500">No proofs yet. Create a seed and run it to generate proofs.</p></div>';
           } else {
             const rows = proofs.map(proof => {
-              const seedCell = proof.seedShowUrl
-                ? `<a href="${proof.seedShowUrl}" class="text-blue-600 hover:text-blue-800">${proof.seedName}</a>`
-                : `<span class="text-gray-500 italic">${proof.seedName} <span class="text-xs text-gray-400">(deleted)</span></span>`;
-              const thumbnailCell = proof.frontThumbnailUrl
-                ? `<img src="${proof.frontThumbnailUrl}" alt="Front thumbnail" class="w-12 h-8 object-cover rounded border border-gray-200" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'48\\' height=\\'32\\'%3E%3Crect fill=\\'%23e5e7eb\\' width=\\'48\\' height=\\'32\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%239ca3af\\' font-size=\\'10\\'%3E-%3C/text%3E%3C/svg%3E';" />`
-                : `<span class="text-gray-400 text-xs">-</span>`;
+              const seedCell = proof.seedShowUrl ? `<a href="${proof.seedShowUrl}" class="text-blue-600 hover:text-blue-800">${proof.seedName}</a>` : `<span class="text-gray-500 italic">${proof.seedName} <span class="text-xs text-gray-400">(deleted)</span></span>`;
+              const thumbnailCell = proof.frontThumbnailUrl ? `<img src="${proof.frontThumbnailUrl}" alt="Front thumbnail" class="w-12 h-8 object-cover rounded border border-gray-200" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'48\\' height=\\'32\\'%3E%3Crect fill=\\'%23e5e7eb\\' width=\\'48\\' height=\\'32\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%239ca3af\\' font-size=\\'10\\'%3E-%3C/text%3E%3C/svg%3E';" />` : `<span class="text-gray-400 text-xs">-</span>`;
               return `
-              <tr>
-                <td class="px-6 py-4 whitespace-nowrap">${thumbnailCell}</td>
-                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${seedCell}</div></td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${proof.publicId || '-'}</td>
-                <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">${proof.status}</span></td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${proof.createdAt}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${proof.mailedAt || '-'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${proof.deliveredAt || '-'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                  <a href="${proof.showUrl}" class="text-blue-600 hover:text-blue-800">View</a>
-                  <button
-                    type="button"
-                    onclick="showDeleteDialog('${proof.deleteUrl}', csrfToken)"
-                    class="text-red-600 hover:text-red-800"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            `;
-            }).join('');
-
+                        <tr>
+                          <td class="px-6 py-4 whitespace-nowrap">${thumbnailCell}</td>
+                          <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${seedCell}</div></td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${proof.publicId || "-"}</td>
+                          <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">${proof.status}</span></td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${proof.createdAt}</td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${proof.mailedAt || "-"}</td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${proof.deliveredAt || "-"}</td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                            <a href="${proof.showUrl}" class="text-blue-600 hover:text-blue-800">View</a>
+                            <button
+                              type="button"
+                              onclick="showDeleteDialog('${proof.deleteUrl}', csrfToken)"
+                              class="text-red-600 hover:text-red-800"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      `;
+            }).join("");
             container.innerHTML = `
-              <div class="bg-white shadow rounded-lg overflow-hidden">
-                <table class="min-w-full divide-y divide-gray-200">
-                  <thead class="bg-gray-50">
-                    <tr>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thumbnail</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seed</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Public ID</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mailed</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivered</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white divide-y divide-gray-200">${rows}</tbody>
-                </table>
-              </div>
-            `;
+                        <div class="bg-white shadow rounded-lg overflow-hidden">
+                          <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                              <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thumbnail</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seed</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Public ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mailed</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivered</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">${rows}</tbody>
+                          </table>
+                        </div>
+                      `;
           }
         </script>
       </div>
     </main>
 
     <!-- Delete Confirmation Dialog -->
-    <div id="deleteDialog" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div
+      id="deleteDialog"
+      class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+    >
       <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3">
-          <h3 class="text-lg font-medium text-gray-900 mb-4">Delete Proof</h3>
+          <h3 class="text-lg font-medium text-gray-900 mb-4">
+            Delete Proof
+          </h3>
           <div id="deleteDialogContent">
             <p class="text-sm text-gray-600 mb-4">
               Are you sure you want to delete this proof? This action cannot be undone.
@@ -142,10 +176,7 @@
             </button>
             <form id="deleteForm" method="POST" style="display: inline;">
               <input type="hidden" name="_csrf" id="deleteCsrfToken" />
-              <button
-                type="submit"
-                class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-              >
+              <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
                 Delete Proof
               </button>
             </form>
@@ -156,38 +187,36 @@
 
     <script>
       // Handle status filter changes
-      document.getElementById('statusFilter').addEventListener('change', function(e) {
+      document.getElementById("statusFilter").addEventListener("change", function(e) {
         const status = e.target.value;
         const url = new URL(window.location.href);
-        if (status === 'all') {
-          url.searchParams.delete('status');
+        if (status === "all") {
+          url.searchParams.delete("status");
         } else {
-          url.searchParams.set('status', status);
+          url.searchParams.set("status", status);
         }
         window.location.href = url.toString();
       });
 
       function showDeleteDialog(deleteUrl, csrfToken) {
-        const dialog = document.getElementById('deleteDialog')
-        const form = document.getElementById('deleteForm')
-        const csrfInput = document.getElementById('deleteCsrfToken')
-
-        form.action = deleteUrl
-        csrfInput.value = csrfToken
-
-        dialog.classList.remove('hidden')
+        const dialog = document.getElementById("deleteDialog");
+        const form = document.getElementById("deleteForm");
+        const csrfInput = document.getElementById("deleteCsrfToken");
+        form.action = deleteUrl;
+        csrfInput.value = csrfToken;
+        dialog.classList.remove("hidden");
       }
 
       function closeDeleteDialog() {
-        document.getElementById('deleteDialog').classList.add('hidden')
+        document.getElementById("deleteDialog").classList.add("hidden");
       }
-
       // Close dialog when clicking outside
-      document.getElementById('deleteDialog').addEventListener('click', function (e) {
+
+      document.getElementById("deleteDialog").addEventListener("click", function(e) {
         if (e.target === this) {
-          closeDeleteDialog()
+          closeDeleteDialog();
         }
-      })
+      });
     </script>
   </body>
 </html>

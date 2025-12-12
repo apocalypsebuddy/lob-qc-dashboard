@@ -17,9 +17,9 @@ interface LobAddressObject {
 
 interface CreatePostcardParams {
   toAddress: LobAddressObject
-  frontTemplateId: string
-  backTemplateId: string
-  seedName?: string
+  front: string // Can be a template ID or a URL
+  back: string // Can be a template ID or a URL
+  seedPublicId?: string
 }
 
 interface LobThumbnail {
@@ -50,12 +50,13 @@ interface LobPostcardResponse {
 export default class LobClient {
   /**
    * Get the from address for postcards
-   * @param seedName - Optional seed name to use as the company name
+   * @param seedPublicId - Optional seed public_id to use as "Seed :public_id" in the company name
    */
-  private static getFromAddress(seedName?: string) {
+  private static getFromAddress(seedPublicId?: string) {
+    const company = seedPublicId ? `Seed ${seedPublicId}` : ''
     return {
       name: 'Lob Proofs',
-      company: seedName || 'Test Company',
+      company,
       address_line1: '123 Test St',
       address_city: 'San Francisco',
       address_state: 'CA',
@@ -80,9 +81,9 @@ export default class LobClient {
 
     const payload = {
       to: params.toAddress,
-      from: this.getFromAddress(params.seedName),
-      front: params.frontTemplateId,
-      back: params.backTemplateId,
+      from: this.getFromAddress(params.seedPublicId),
+      front: params.front,
+      back: params.back,
       size: '6x9' as const,
       mail_type: 'usps_first_class' as const,
     }
@@ -110,8 +111,8 @@ export default class LobClient {
       payload: payload,
       bodyLength: requestBody.length,
       userId: user.id,
-      frontTemplateId: params.frontTemplateId,
-      backTemplateId: params.backTemplateId,
+      front: params.front,
+      back: params.back,
     })
 
     logger.debug('Full request details', {

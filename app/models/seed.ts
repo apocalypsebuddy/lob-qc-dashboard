@@ -14,11 +14,14 @@ export default class Seed extends BaseModel {
   @column()
   declare name: string
 
-  @column({ columnName: 'front_template_id' })
-  declare frontTemplateId: string
+  @column({ columnName: 'public_id' })
+  declare publicId: string | null
 
-  @column({ columnName: 'back_template_id' })
-  declare backTemplateId: string
+  @column()
+  declare front: string
+
+  @column()
+  declare back: string
 
   @column()
   declare cadence: 'one_time' | 'weekly' | 'monthly'

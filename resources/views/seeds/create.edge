@@ -3,8 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Create Seed - Seeds Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>
+      Create Seed - Seeds Dashboard
+    </title>
+    <script src="https://cdn.tailwindcss.com">
+
+    </script>
   </head>
   <body class="bg-gray-50 min-h-screen">
     <nav class="bg-white shadow-sm border-b">
@@ -50,9 +54,11 @@
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <div class="px-4 py-8 sm:px-0">
         <div class="max-w-2xl mx-auto bg-white shadow rounded-lg p-6">
-          <h2 class="text-2xl font-bold mb-6">Create Seed</h2>
+          <h2 class="text-2xl font-bold mb-6">
+            Create Seed
+          </h2>
 
-          <form method="POST" action="{{ route('seeds.store') }}">
+          <form method="POST" action="{{ route('seeds.store') }}" enctype="multipart/form-data">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
 
             <div class="mb-4">
@@ -68,25 +74,59 @@
             </div>
 
             <div class="mb-4">
-              <label for="frontTemplateId" class="block text-sm font-medium text-gray-700 mb-1">Front Template ID *</label>
+              <label for="front" class="block text-sm font-medium text-gray-700 mb-1">Front Template ID or URL</label>
               <input
                 type="text"
-                id="frontTemplateId"
-                name="frontTemplateId"
-                required
+                id="front"
+                name="front"
+                placeholder="Enter template ID or URL"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
+              <p class="mt-1 text-sm text-gray-500">
+                Or upload a file below
+              </p>
             </div>
 
             <div class="mb-4">
-              <label for="backTemplateId" class="block text-sm font-medium text-gray-700 mb-1">Back Template ID *</label>
+              <label for="frontFile" class="block text-sm font-medium text-gray-700 mb-1">Front File (PDF or JPG)</label>
               <input
-                type="text"
-                id="backTemplateId"
-                name="backTemplateId"
-                required
+                type="file"
+                id="frontFile"
+                name="frontFile"
+                accept=".pdf,.jpg,.jpeg"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
+              <p class="mt-1 text-sm text-gray-500">
+                Maximum file size: 10MB. Accepted formats: PDF, JPG
+              </p>
+            </div>
+
+            <div class="mb-4">
+              <label for="back" class="block text-sm font-medium text-gray-700 mb-1">Back Template ID or URL</label>
+              <input
+                type="text"
+                id="back"
+                name="back"
+                placeholder="Enter template ID or URL"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+              <p class="mt-1 text-sm text-gray-500">
+                Or upload a file below
+              </p>
+            </div>
+
+            <div class="mb-4">
+              <label for="backFile" class="block text-sm font-medium text-gray-700 mb-1">Back File (PDF or JPG)</label>
+              <input
+                type="file"
+                id="backFile"
+                name="backFile"
+                accept=".pdf,.jpg,.jpeg"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+              <p class="mt-1 text-sm text-gray-500">
+                Maximum file size: 10MB. Accepted formats: PDF, JPG
+              </p>
             </div>
 
             <div class="mb-4">
@@ -96,14 +136,22 @@
                 name="cadence"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="one_time">One Time</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
+                <option value="one_time">
+                  One Time
+                </option>
+                <option value="weekly">
+                  Weekly
+                </option>
+                <option value="monthly">
+                  Monthly
+                </option>
               </select>
             </div>
 
             <div class="border-t pt-4 mt-6">
-              <h3 class="text-lg font-medium mb-4">To Addresses</h3>
+              <h3 class="text-lg font-medium mb-4">
+                To Addresses
+              </h3>
 
               <div id="addressesContainer">
                 <!-- Address fields will be dynamically added here -->
@@ -121,369 +169,338 @@
             </div>
 
             <script>
-              let addressIndex = 0
-              let expandedIndex = 0
+              let addressIndex = 0;
+
+              let expandedIndex = 0;
 
               function getAddressSummary(index) {
                 // Get from the address group's input fields (whether visible or hidden)
-                const addressGroup = document.querySelector(`.address-group[data-index="${index}"]`)
-                let data = {}
-
+                const addressGroup = document.querySelector(`.address-group[data-index="${index}"]`);
+                let data = {};
                 if (addressGroup) {
-                  addressGroup.querySelectorAll('.address-input').forEach(input => {
-                    const nameMatch = input.name.match(/\[([^\]]+)\]$/)
+                  addressGroup.querySelectorAll(".address-input").forEach(input => {
+                    const nameMatch = input.name.match(/\[([^\]]+)\]$/);
                     if (nameMatch) {
-                      data[nameMatch[1]] = input.value
+                      data[nameMatch[1]] = input.value;
                     }
-                  })
+                  });
                 }
-
-                const parts = []
-                if (data.toName) parts.push(data.toName)
-                if (data.addressLine1) parts.push(data.addressLine1)
+                const parts = [];
+                if (data.toName) parts.push(data.toName);
+                if (data.addressLine1) parts.push(data.addressLine1);
                 if (data.addressCity && data.addressState && data.addressZip) {
-                  parts.push(`${data.addressCity}, ${data.addressState} ${data.addressZip}`)
+                  parts.push(`${data.addressCity}, ${data.addressState} ${data.addressZip}`);
                 }
-                return parts.length > 0 ? parts.join(' - ') : `Address ${index + 1}`
+                return parts.length > 0 ? parts.join(" - ") : `Address ${index + 1}`;
               }
 
               function createAddressSummary(index) {
-                const summaryDiv = document.createElement('div')
-                summaryDiv.className = 'address-summary border border-gray-200 rounded-lg p-3 mb-4 bg-gray-50 cursor-pointer hover:bg-gray-100'
-                summaryDiv.dataset.index = index
-                summaryDiv.dataset.type = 'summary'
-
-                const summary = getAddressSummary(index)
+                const summaryDiv = document.createElement("div");
+                summaryDiv.className = "address-summary border border-gray-200 rounded-lg p-3 mb-4 bg-gray-50 cursor-pointer hover:bg-gray-100";
+                summaryDiv.dataset.index = index;
+                summaryDiv.dataset.type = "summary";
+                const summary = getAddressSummary(index);
                 summaryDiv.innerHTML = `
-                  <div class="flex justify-between items-center">
-                    <div class="flex-1">
-                      <div class="text-sm font-medium text-gray-700">Address ${index + 1}</div>
-                      <div class="text-xs text-gray-500 mt-1">${summary}</div>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                      <button type="button" class="expand-address-btn text-blue-600 hover:text-blue-800 text-sm font-medium">
-                        Edit
-                      </button>
-                      ${index > 0 ? '<button type="button" class="remove-address-btn text-red-600 hover:text-red-800 text-sm font-medium">Remove</button>' : ''}
-                    </div>
-                  </div>
-                `
-
-                summaryDiv.querySelector('.expand-address-btn').addEventListener('click', () => {
-                  expandAddress(index)
-                })
-
-                const removeBtn = summaryDiv.querySelector('.remove-address-btn')
+                                <div class="flex justify-between items-center">
+                                  <div class="flex-1">
+                                    <div class="text-sm font-medium text-gray-700">Address ${index + 1}</div>
+                                    <div class="text-xs text-gray-500 mt-1">${summary}</div>
+                                  </div>
+                                  <div class="flex items-center space-x-2">
+                                    <button type="button" class="expand-address-btn text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                      Edit
+                                    </button>
+                                    ${index > 0 ? '<button type="button" class="remove-address-btn text-red-600 hover:text-red-800 text-sm font-medium">Remove</button>' : ""}
+                                  </div>
+                                </div>
+                              `;
+                summaryDiv.querySelector(".expand-address-btn").addEventListener("click", () => {
+                  expandAddress(index);
+                });
+                const removeBtn = summaryDiv.querySelector(".remove-address-btn");
                 if (removeBtn) {
-                  removeBtn.addEventListener('click', (e) => {
-                    e.stopPropagation()
-                    removeAddress(index)
-                  })
+                  removeBtn.addEventListener("click", e => {
+                    e.stopPropagation();
+                    removeAddress(index);
+                  });
                 }
-
-                return summaryDiv
+                return summaryDiv;
               }
 
               function createAddressFields(index) {
-                const addressDiv = document.createElement('div')
-                addressDiv.className = 'address-group border border-gray-200 rounded-lg p-4 mb-4 bg-white'
-                addressDiv.dataset.index = index
-                addressDiv.dataset.type = 'expanded'
-
+                const addressDiv = document.createElement("div");
+                addressDiv.className = "address-group border border-gray-200 rounded-lg p-4 mb-4 bg-white";
+                addressDiv.dataset.index = index;
+                addressDiv.dataset.type = "expanded";
                 addressDiv.innerHTML = `
-                  <div class="flex justify-between items-center mb-4">
-                    <h4 class="text-md font-medium text-gray-700">Address ${index + 1}</h4>
-                    <div class="flex items-center space-x-2">
-                      <button type="button" class="collapse-address-btn text-gray-600 hover:text-gray-800 text-sm font-medium">
-                        Collapse
-                      </button>
-                      ${index > 0 ? '<button type="button" class="remove-address-btn text-red-600 hover:text-red-800 text-sm font-medium">Remove</button>' : ''}
-                    </div>
-                  </div>
+                                <div class="flex justify-between items-center mb-4">
+                                  <h4 class="text-md font-medium text-gray-700">Address ${index + 1}</h4>
+                                  <div class="flex items-center space-x-2">
+                                    <button type="button" class="collapse-address-btn text-gray-600 hover:text-gray-800 text-sm font-medium">
+                                      Collapse
+                                    </button>
+                                    ${index > 0 ? '<button type="button" class="remove-address-btn text-red-600 hover:text-red-800 text-sm font-medium">Remove</button>' : ""}
+                                  </div>
+                                </div>
 
-                  <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                    <input
-                      type="text"
-                      name="addresses[${index}][toName]"
-                      autocomplete="name"
-                      maxlength="40"
-                      class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
+                                <div class="mb-4">
+                                  <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                  <input
+                                    type="text"
+                                    name="addresses[${index}][toName]"
+                                    autocomplete="name"
+                                    maxlength="40"
+                                    class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                  />
+                                </div>
 
-                  <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Address Line 1 *</label>
-                    <input
-                      type="text"
-                      name="addresses[${index}][addressLine1]"
-                      autocomplete="street-address"
-                      required
-                      maxlength="64"
-                      class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
+                                <div class="mb-4">
+                                  <label class="block text-sm font-medium text-gray-700 mb-1">Address Line 1 *</label>
+                                  <input
+                                    type="text"
+                                    name="addresses[${index}][addressLine1]"
+                                    autocomplete="street-address"
+                                    required
+                                    maxlength="64"
+                                    class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                  />
+                                </div>
 
-                  <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Address Line 2</label>
-                    <input
-                      type="text"
-                      name="addresses[${index}][addressLine2]"
-                      autocomplete="address-line2"
-                      maxlength="64"
-                      class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
+                                <div class="mb-4">
+                                  <label class="block text-sm font-medium text-gray-700 mb-1">Address Line 2</label>
+                                  <input
+                                    type="text"
+                                    name="addresses[${index}][addressLine2]"
+                                    autocomplete="address-line2"
+                                    maxlength="64"
+                                    class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                  />
+                                </div>
 
-                  <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">City *</label>
-                      <input
-                        type="text"
-                        name="addresses[${index}][addressCity]"
-                        autocomplete="address-level2"
-                        required
-                        maxlength="200"
-                        class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">State (2 letters) *</label>
-                      <input
-                        type="text"
-                        name="addresses[${index}][addressState]"
-                        autocomplete="address-level1"
-                        required
-                        pattern="[A-Z]{2}"
-                        maxlength="2"
-                        class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
+                                <div class="grid grid-cols-2 gap-4 mb-4">
+                                  <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                                    <input
+                                      type="text"
+                                      name="addresses[${index}][addressCity]"
+                                      autocomplete="address-level2"
+                                      required
+                                      maxlength="200"
+                                      class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">State (2 letters) *</label>
+                                    <input
+                                      type="text"
+                                      name="addresses[${index}][addressState]"
+                                      autocomplete="address-level1"
+                                      required
+                                      pattern="[A-Z]{2}"
+                                      maxlength="2"
+                                      class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                  </div>
+                                </div>
 
-                  <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">ZIP Code *</label>
-                    <input
-                      type="text"
-                      name="addresses[${index}][addressZip]"
-                      autocomplete="postal-code"
-                      required
-                      pattern="\\d{5}(-\\d{4})?"
-                      class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                `
-
-                addressDiv.querySelector('.collapse-address-btn').addEventListener('click', () => {
-                  collapseAddress(index)
-                })
-
-                const removeBtn = addressDiv.querySelector('.remove-address-btn')
+                                <div class="mb-4">
+                                  <label class="block text-sm font-medium text-gray-700 mb-1">ZIP Code *</label>
+                                  <input
+                                    type="text"
+                                    name="addresses[${index}][addressZip]"
+                                    autocomplete="postal-code"
+                                    required
+                                    pattern="\\d{5}(-\\d{4})?"
+                                    class="address-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                  />
+                                </div>
+                              `;
+                addressDiv.querySelector(".collapse-address-btn").addEventListener("click", () => {
+                  collapseAddress(index);
+                });
+                const removeBtn = addressDiv.querySelector(".remove-address-btn");
                 if (removeBtn) {
-                  removeBtn.addEventListener('click', () => {
-                    removeAddress(index)
-                  })
+                  removeBtn.addEventListener("click", () => {
+                    removeAddress(index);
+                  });
                 }
-
-                return addressDiv
+                return addressDiv;
               }
 
               function collapseAddress(index) {
-                const expanded = document.querySelector(`.address-group[data-index="${index}"][data-type="expanded"]`)
-                if (!expanded) return
-
+                const expanded = document.querySelector(`.address-group[data-index="${index}"][data-type="expanded"]`);
+                if (!expanded) return;
                 // Hide the form fields but keep them in the DOM for form submission
-                const formFields = expanded.querySelectorAll('.address-input')
+                const formFields = expanded.querySelectorAll(".address-input");
                 formFields.forEach(field => {
-                  field.style.display = 'none'
-                })
-
+                  field.style.display = "none";
+                });
                 // Hide all labels
-                const labels = expanded.querySelectorAll('label')
+                const labels = expanded.querySelectorAll("label");
                 labels.forEach(label => {
-                  label.style.display = 'none'
-                })
-
+                  label.style.display = "none";
+                });
                 // Hide the form content divs (everything except header and buttons)
-                const formContent = expanded.querySelectorAll('.mb-4, .grid')
+                const formContent = expanded.querySelectorAll(".mb-4, .grid");
                 formContent.forEach(el => {
                   // Don't hide the header div
-                  if (!el.closest('.flex.justify-between')) {
-                    el.style.display = 'none'
+                  if (!el.closest(".flex.justify-between")) {
+                    el.style.display = "none";
                   }
-                })
-
+                });
                 // Hide the header buttons (Collapse button)
-                const headerButtons = expanded.querySelector('.flex.items-center.space-x-2')
+                const headerButtons = expanded.querySelector(".flex.items-center.space-x-2");
                 if (headerButtons) {
-                  headerButtons.style.display = 'none'
+                  headerButtons.style.display = "none";
                 }
-
                 // Create and insert summary after the header
-                const summary = createAddressSummary(index)
-                const header = expanded.querySelector('.flex.justify-between')
+                const summary = createAddressSummary(index);
+                const header = expanded.querySelector(".flex.justify-between");
                 if (header && header.nextSibling) {
-                  expanded.insertBefore(summary, header.nextSibling)
+                  expanded.insertBefore(summary, header.nextSibling);
                 } else {
-                  expanded.appendChild(summary)
+                  expanded.appendChild(summary);
                 }
-
                 // Add a class to mark as collapsed
-                expanded.classList.add('collapsed')
-                expanded.dataset.type = 'collapsed'
-
+                expanded.classList.add("collapsed");
+                expanded.dataset.type = "collapsed";
                 if (expandedIndex === index) {
-                  expandedIndex = -1
+                  expandedIndex = -1;
                 }
               }
 
               function expandAddress(index) {
                 // Collapse currently expanded address if any
                 if (expandedIndex >= 0 && expandedIndex !== index) {
-                  collapseAddress(expandedIndex)
+                  collapseAddress(expandedIndex);
                 }
-
-                const addressGroup = document.querySelector(`.address-group[data-index="${index}"]`)
-                if (!addressGroup) return
-
+                const addressGroup = document.querySelector(`.address-group[data-index="${index}"]`);
+                if (!addressGroup) return;
                 // Remove summary if it exists
-                const summary = addressGroup.querySelector(`.address-summary[data-index="${index}"]`)
+                const summary = addressGroup.querySelector(`.address-summary[data-index="${index}"]`);
                 if (summary) {
-                  summary.remove()
+                  summary.remove();
                 }
-
                 // Show all form fields
-                const formFields = addressGroup.querySelectorAll('.address-input')
+                const formFields = addressGroup.querySelectorAll(".address-input");
                 formFields.forEach(field => {
-                  field.style.display = ''
-                })
-
+                  field.style.display = "";
+                });
                 // Show all labels
-                const labels = addressGroup.querySelectorAll('label')
+                const labels = addressGroup.querySelectorAll("label");
                 labels.forEach(label => {
-                  label.style.display = ''
-                })
-
+                  label.style.display = "";
+                });
                 // Show form content
-                const formContent = addressGroup.querySelectorAll('.mb-4, .grid')
+                const formContent = addressGroup.querySelectorAll(".mb-4, .grid");
                 formContent.forEach(el => {
-                  el.style.display = ''
-                })
-
+                  el.style.display = "";
+                });
                 // Show header buttons
-                const headerButtons = addressGroup.querySelector('.flex.items-center.space-x-2')
+                const headerButtons = addressGroup.querySelector(".flex.items-center.space-x-2");
                 if (headerButtons) {
-                  headerButtons.style.display = 'flex'
+                  headerButtons.style.display = "flex";
                 }
-
                 // Update state
-                addressGroup.classList.remove('collapsed')
-                addressGroup.dataset.type = 'expanded'
-                expandedIndex = index
+                addressGroup.classList.remove("collapsed");
+                addressGroup.dataset.type = "expanded";
+                expandedIndex = index;
               }
 
               function removeAddress(index) {
-                const element = document.querySelector(`.address-group[data-index="${index}"]`)
+                const element = document.querySelector(`.address-group[data-index="${index}"]`);
                 if (element && index > 0) {
-                  element.remove()
-                  updateAddressNumbers()
+                  element.remove();
+                  updateAddressNumbers();
                   if (expandedIndex === index) {
-                    expandedIndex = -1
+                    expandedIndex = -1;
                   }
                 }
               }
 
               function updateAddressNumbers() {
-                const container = document.getElementById('addressesContainer')
+                const container = document.getElementById("addressesContainer");
                 // Get all address groups (not summaries, as summaries are children of groups)
-                const addressGroups = Array.from(container.querySelectorAll('.address-group[data-index]'))
-                  .sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index))
-
+                const addressGroups = Array.from(container.querySelectorAll(".address-group[data-index]")).sort((a, b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
                 addressGroups.forEach((group, newIndex) => {
-                  const oldIndex = parseInt(group.dataset.index)
+                  const oldIndex = parseInt(group.dataset.index);
                   if (oldIndex !== newIndex) {
                     // Update data-index on the group
-                    group.dataset.index = newIndex
-
+                    group.dataset.index = newIndex;
                     // Update input names in the group
-                    group.querySelectorAll('.address-input').forEach(input => {
-                      const nameMatch = input.name.match(/^addresses\[\d+\]\[(.+)\]$/)
+                    group.querySelectorAll(".address-input").forEach(input => {
+                      const nameMatch = input.name.match(/^addresses\[\d+\]\[(.+)\]$/);
                       if (nameMatch) {
-                        input.name = `addresses[${newIndex}][${nameMatch[1]}]`
+                        input.name = `addresses[${newIndex}][${nameMatch[1]}]`;
                       }
-                    })
-
+                    });
                     // Update display text in header
-                    const header = group.querySelector('h4')
+                    const header = group.querySelector("h4");
                     if (header) {
-                      header.textContent = `Address ${newIndex + 1}`
+                      header.textContent = `Address ${newIndex + 1}`;
                     }
-
                     // Update summary if it exists
-                    const summary = group.querySelector(`.address-summary[data-index="${oldIndex}"]`)
+                    const summary = group.querySelector(`.address-summary[data-index="${oldIndex}"]`);
                     if (summary) {
-                      summary.dataset.index = newIndex
-                      const summaryHeader = summary.querySelector('.text-sm.font-medium')
+                      summary.dataset.index = newIndex;
+                      const summaryHeader = summary.querySelector(".text-sm.font-medium");
                       if (summaryHeader) {
-                        summaryHeader.textContent = `Address ${newIndex + 1}`
+                        summaryHeader.textContent = `Address ${newIndex + 1}`;
                       }
                     }
                   } else {
                     // Even if index hasn't changed, update summary header if it exists
-                    const summary = group.querySelector('.address-summary')
+                    const summary = group.querySelector(".address-summary");
                     if (summary) {
-                      const summaryHeader = summary.querySelector('.text-sm.font-medium')
+                      const summaryHeader = summary.querySelector(".text-sm.font-medium");
                       if (summaryHeader) {
-                        summaryHeader.textContent = `Address ${newIndex + 1}`
+                        summaryHeader.textContent = `Address ${newIndex + 1}`;
                       }
                     }
                   }
-                })
-
+                });
                 // Update remove button visibility
                 addressGroups.forEach((group, index) => {
-                  const removeBtns = group.querySelectorAll('.remove-address-btn')
+                  const removeBtns = group.querySelectorAll(".remove-address-btn");
                   removeBtns.forEach(btn => {
-                    btn.style.display = index === 0 ? 'none' : 'block'
-                  })
-                })
+                    btn.style.display = index === 0 ? "none" : "block";
+                  });
+                });
               }
 
               function updateSummaryIfCollapsed(index) {
-                const summary = document.querySelector(`.address-summary[data-index="${index}"]`)
+                const summary = document.querySelector(`.address-summary[data-index="${index}"]`);
                 if (summary) {
                   // Preserve stored values
-                  const storedValues = summary.dataset.values
-                  const newSummary = createAddressSummary(index)
+                  const storedValues = summary.dataset.values;
+                  const newSummary = createAddressSummary(index);
                   if (storedValues) {
-                    newSummary.dataset.values = storedValues
+                    newSummary.dataset.values = storedValues;
                   }
-                  summary.replaceWith(newSummary)
+                  summary.replaceWith(newSummary);
                 }
               }
-
               // Initialize with first address expanded
-              document.addEventListener('DOMContentLoaded', () => {
-                const container = document.getElementById('addressesContainer')
-                const firstAddress = createAddressFields(0)
-                container.appendChild(firstAddress)
-                addressIndex = 1
-                expandedIndex = 0
 
+              document.addEventListener("DOMContentLoaded", () => {
+                const container = document.getElementById("addressesContainer");
+                const firstAddress = createAddressFields(0);
+                container.appendChild(firstAddress);
+                addressIndex = 1;
+                expandedIndex = 0;
                 // Add address button handler
-                document.getElementById('addAddressBtn').addEventListener('click', () => {
+                document.getElementById("addAddressBtn").addEventListener("click", () => {
                   // Collapse currently expanded address
                   if (expandedIndex >= 0) {
-                    collapseAddress(expandedIndex)
+                    collapseAddress(expandedIndex);
                   }
-
                   // Create new expanded address
-                  const newAddress = createAddressFields(addressIndex)
-                  container.appendChild(newAddress)
-                  expandedIndex = addressIndex
-                  addressIndex++
-                })
-              })
+                  const newAddress = createAddressFields(addressIndex);
+                  container.appendChild(newAddress);
+                  expandedIndex = addressIndex;
+                  addressIndex++;
+                });
+              });
             </script>
 
             <div class="flex justify-end space-x-4 mt-6">
