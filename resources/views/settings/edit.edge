@@ -100,11 +100,11 @@
                 if (maskedApiKey && maskedApiKey.trim().length > 0) {
                   console.log("Displaying masked API key");
                   currentKeyDisplay.innerHTML = `
-                                  <div class="mb-2 p-2 bg-gray-50 border border-gray-200 rounded text-sm">
-                                    <span class="text-gray-600">Current value: </span>
-                                    <span class="font-mono text-gray-800">${maskedApiKey}</span>
-                                  </div>
-                                `;
+                                                <div class="mb-2 p-2 bg-gray-50 border border-gray-200 rounded text-sm">
+                                                  <span class="text-gray-600">Current value: </span>
+                                                  <span class="font-mono text-gray-800">${maskedApiKey}</span>
+                                                </div>
+                                              `;
                   lobApiKeyInput.placeholder = "Enter new API key to update";
                   helpText.textContent = "Enter a new API key to update it, or leave blank to keep the current key";
                 } else {

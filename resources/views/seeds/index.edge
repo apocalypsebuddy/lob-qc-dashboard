@@ -78,55 +78,55 @@
 
           if (!seeds || seeds.length === 0) {
             container.innerHTML = `
-                        <div class="bg-white shadow rounded-lg p-8 text-center">
-                          <p class="text-gray-500 mb-4">No seeds yet. Create your first seed to get started.</p>
-                          <a href="{{ route('seeds.create') }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">Create Seed</a>
-                        </div>
-                      `;
+                                  <div class="bg-white shadow rounded-lg p-8 text-center">
+                                    <p class="text-gray-500 mb-4">No seeds yet. Create your first seed to get started.</p>
+                                    <a href="{{ route('seeds.create') }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">Create Seed</a>
+                                  </div>
+                                `;
           } else {
             const rows = seeds.map(seed => `
-                        <tr>
-                          <td class="px-6 py-4 whitespace-nowrap">
-                            <a href="${seed.showUrl}" class="text-blue-600 hover:text-blue-800 font-medium">${seed.name}</a>
-                          </td>
-                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.createdAt}</td>
-                          <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${seed.statusClass}">${seed.status}</span>
-                          </td>
-                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.cadence}</td>
-                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.lastRunAt || "Never"}</td>
-                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.nextRunAt || "N/A"}</td>
-                          <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                            <a href="${seed.showUrl}" class="text-blue-600 hover:text-blue-800">View</a>
-                            <a href="${seed.editUrl}" class="text-green-600 hover:text-green-800">Edit</a>
-                            <button
-                              type="button"
-                              onclick="showDeleteDialog(${seed.proofCount}, '${seed.deleteUrl}', '${csrfToken}')"
-                              class="text-red-600 hover:text-red-800"
-                            >
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
-                      `).join("");
+                                  <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                      <a href="${seed.showUrl}" class="text-blue-600 hover:text-blue-800 font-medium">${seed.name}</a>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.createdAt}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${seed.statusClass}">${seed.status}</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.cadence}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.lastRunAt || "Never"}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.nextRunAt || "N/A"}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                                      <a href="${seed.showUrl}" class="text-blue-600 hover:text-blue-800">View</a>
+                                      <a href="${seed.editUrl}" class="text-green-600 hover:text-green-800">Edit</a>
+                                      <button
+                                        type="button"
+                                        onclick="showDeleteDialog(${seed.proofCount}, '${seed.deleteUrl}', '${csrfToken}')"
+                                        class="text-red-600 hover:text-red-800"
+                                      >
+                                        Delete
+                                      </button>
+                                    </td>
+                                  </tr>
+                                `).join("");
             container.innerHTML = `
-                        <div class="bg-white shadow rounded-lg overflow-hidden">
-                          <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                              <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cadence</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Run</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Run</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">${rows}</tbody>
-                          </table>
-                        </div>
-                      `;
+                                  <div class="bg-white shadow rounded-lg overflow-hidden">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                      <thead class="bg-gray-50">
+                                        <tr>
+                                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cadence</th>
+                                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Run</th>
+                                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Run</th>
+                                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody class="bg-white divide-y divide-gray-200">${rows}</tbody>
+                                    </table>
+                                  </div>
+                                `;
           }
         </script>
       </div>
@@ -175,40 +175,40 @@
         csrfInput.value = csrfToken;
         if (proofCount > 0) {
           content.innerHTML = `
-                  <p class="text-sm text-gray-600 mb-4">
-                    This seed has ${proofCount} proof(s). What would you like to do with them?
-                  </p>
-                  <div class="space-y-2">
-                    <label class="flex items-center">
-                      <input
-                        type="radio"
-                        name="proof_action"
-                        value="delete"
-                        checked
-                        onchange="document.getElementById('deleteProofsInput').value = 'true'"
-                        class="mr-2"
-                      />
-                      <span class="text-sm text-gray-700">Delete all proofs along with the seed</span>
-                    </label>
-                    <label class="flex items-center">
-                      <input
-                        type="radio"
-                        name="proof_action"
-                        value="orphan"
-                        onchange="document.getElementById('deleteProofsInput').value = 'false'"
-                        class="mr-2"
-                      />
-                      <span class="text-sm text-gray-700">Keep proofs but orphan them (seed link will be broken)</span>
-                    </label>
-                  </div>
-                `;
+                        <p class="text-sm text-gray-600 mb-4">
+                          This seed has ${proofCount} proof(s). What would you like to do with them?
+                        </p>
+                        <div class="space-y-2">
+                          <label class="flex items-center">
+                            <input
+                              type="radio"
+                              name="proof_action"
+                              value="delete"
+                              checked
+                              onchange="document.getElementById('deleteProofsInput').value = 'true'"
+                              class="mr-2"
+                            />
+                            <span class="text-sm text-gray-700">Delete all proofs along with the seed</span>
+                          </label>
+                          <label class="flex items-center">
+                            <input
+                              type="radio"
+                              name="proof_action"
+                              value="orphan"
+                              onchange="document.getElementById('deleteProofsInput').value = 'false'"
+                              class="mr-2"
+                            />
+                            <span class="text-sm text-gray-700">Keep proofs but orphan them (seed link will be broken)</span>
+                          </label>
+                        </div>
+                      `;
           deleteProofsInput.value = "true"; // Default to deleting proofs
         } else {
           content.innerHTML = `
-                  <p class="text-sm text-gray-600 mb-4">
-                    Are you sure you want to delete this seed? This action cannot be undone.
-                  </p>
-                `;
+                        <p class="text-sm text-gray-600 mb-4">
+                          Are you sure you want to delete this seed? This action cannot be undone.
+                        </p>
+                      `;
           deleteProofsInput.value = "false";
         }
         dialog.classList.remove("hidden");

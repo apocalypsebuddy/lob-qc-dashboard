@@ -122,31 +122,31 @@
             <script>
               if (proof.resourceId) {
                 document.getElementById("resource-id").innerHTML = `
-                                <div>
-                                  <dt class="text-sm font-medium text-gray-500">Resource ID</dt>
-                                  <dd class="mt-1 text-sm text-gray-900 font-mono">
-                                    <a href="https://dashboard.lob.com/postcards/${proof.resourceId}" target="_blank" class="text-blue-600 hover:text-blue-800">${proof.resourceId}</a>
-                                  </dd>
-                                </div>
-                              `;
+                                              <div>
+                                                <dt class="text-sm font-medium text-gray-500">Resource ID</dt>
+                                                <dd class="mt-1 text-sm text-gray-900 font-mono">
+                                                  <a href="https://dashboard.lob.com/postcards/${proof.resourceId}" target="_blank" class="text-blue-600 hover:text-blue-800">${proof.resourceId}</a>
+                                                </dd>
+                                              </div>
+                                            `;
               }
 
               if (proof.trackingNumber) {
                 document.getElementById("tracking-number").innerHTML = `
-                                <div>
-                                  <dt class="text-sm font-medium text-gray-500">Tracking Number</dt>
-                                  <dd class="mt-1 text-sm text-gray-900">${proof.trackingNumber}</dd>
-                                </div>
-                              `;
+                                              <div>
+                                                <dt class="text-sm font-medium text-gray-500">Tracking Number</dt>
+                                                <dd class="mt-1 text-sm text-gray-900">${proof.trackingNumber}</dd>
+                                              </div>
+                                            `;
               }
 
               if (proof.deliveredAt) {
                 document.getElementById("delivered-at").innerHTML = `
-                                <div>
-                                  <dt class="text-sm font-medium text-gray-500">Delivered At</dt>
-                                  <dd class="mt-1 text-sm text-gray-900">${proof.deliveredAt}</dd>
-                                </div>
-                              `;
+                                              <div>
+                                                <dt class="text-sm font-medium text-gray-500">Delivered At</dt>
+                                                <dd class="mt-1 text-sm text-gray-900">${proof.deliveredAt}</dd>
+                                              </div>
+                                            `;
               }
 
               if (proof.lobDetails) {
@@ -154,43 +154,43 @@
                 let detailsHtml = "";
                 if (details.size) {
                   detailsHtml += `
-                                  <div>
-                                    <dt class="text-sm font-medium text-gray-500">Size</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">${details.size}</dd>
-                                  </div>
-                                `;
+                                                <div>
+                                                  <dt class="text-sm font-medium text-gray-500">Size</dt>
+                                                  <dd class="mt-1 text-sm text-gray-900">${details.size}</dd>
+                                                </div>
+                                              `;
                 }
                 if (details.mailType) {
                   detailsHtml += `
-                                  <div>
-                                    <dt class="text-sm font-medium text-gray-500">Mail Type</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">${details.mailType}</dd>
-                                  </div>
-                                `;
+                                                <div>
+                                                  <dt class="text-sm font-medium text-gray-500">Mail Type</dt>
+                                                  <dd class="mt-1 text-sm text-gray-900">${details.mailType}</dd>
+                                                </div>
+                                              `;
                 }
                 if (details.dateCreated) {
                   detailsHtml += `
-                                  <div>
-                                    <dt class="text-sm font-medium text-gray-500">Date Created</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">${details.dateCreated}</dd>
-                                  </div>
-                                `;
+                                                <div>
+                                                  <dt class="text-sm font-medium text-gray-500">Date Created</dt>
+                                                  <dd class="mt-1 text-sm text-gray-900">${details.dateCreated}</dd>
+                                                </div>
+                                              `;
                 }
                 if (details.sendDate) {
                   detailsHtml += `
-                                  <div>
-                                    <dt class="text-sm font-medium text-gray-500">Send Date</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">${details.sendDate}</dd>
-                                  </div>
-                                `;
+                                                <div>
+                                                  <dt class="text-sm font-medium text-gray-500">Send Date</dt>
+                                                  <dd class="mt-1 text-sm text-gray-900">${details.sendDate}</dd>
+                                                </div>
+                                              `;
                 }
                 if (details.expectedDeliveryDate) {
                   detailsHtml += `
-                                  <div>
-                                    <dt class="text-sm font-medium text-gray-500">Expected Delivery Date Range</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">${details.expectedDeliveryDate}</dd>
-                                  </div>
-                                `;
+                                                <div>
+                                                  <dt class="text-sm font-medium text-gray-500">Expected Delivery Date Range</dt>
+                                                  <dd class="mt-1 text-sm text-gray-900">${details.expectedDeliveryDate}</dd>
+                                                </div>
+                                              `;
                 }
                 if (detailsHtml) {
                   document.getElementById("lob-details").innerHTML = detailsHtml;
@@ -260,11 +260,11 @@
         <script>
           if (proof.liveProofUrl) {
             document.getElementById("live-proof").innerHTML = `
-                        <div class="mt-6 bg-white shadow rounded-lg p-6">
-                          <h2 class="text-xl font-semibold mb-4">Live Proof</h2>
-                          <img src="${proof.liveProofUrl}" alt="Live proof" class="max-w-full rounded-lg shadow-sm" />
-                        </div>
-                      `;
+                                  <div class="mt-6 bg-white shadow rounded-lg p-6">
+                                    <h2 class="text-xl font-semibold mb-4">Live Proof</h2>
+                                    <img src="${proof.liveProofUrl}" alt="Live proof" class="max-w-full rounded-lg shadow-sm" />
+                                  </div>
+                                `;
           }
         </script>
 

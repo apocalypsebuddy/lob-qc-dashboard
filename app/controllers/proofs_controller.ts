@@ -3,10 +3,12 @@ import logger from '@adonisjs/core/services/logger'
 import router from '@adonisjs/core/services/router'
 import Proof from '#models/proof'
 import { updateProofValidator, updateProofStatusValidator } from '#validators/proof'
-import { unlink } from 'node:fs/promises'
+import { unlink, access } from 'node:fs/promises'
+import { constants } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import LobClient from '#services/lob_client'
+import ImageResizeService from '#services/image_resize_service'
 import { DateTime } from 'luxon'
 
 export default class ProofsController {
@@ -271,7 +273,7 @@ export default class ProofsController {
       })
 
       const file = request.file('photo', {
-        size: '4mb',
+        size: '50mb', // Allow larger files initially, will be resized to under 4MB
         extnames: ['jpg', 'jpeg', 'png'],
       })
 
@@ -303,16 +305,56 @@ export default class ProofsController {
       const tempPath = join(tempDir, file.fileName!)
       logger.info('File saved to temp location', { tempPath, proofId: proof.id })
 
+      // Resize image if needed to ensure it's under 4MB
+      const filePathToUpload = await ImageResizeService.resizeImageIfNeeded(
+        tempPath,
+        4 * 1024 * 1024
+      )
+      logger.info('Image resize check completed', {
+        originalPath: tempPath,
+        uploadPath: filePathToUpload,
+        isResized: filePathToUpload !== tempPath,
+        proofId: proof.id,
+      })
+
+      // Verify the file exists before uploading
+      try {
+        await access(filePathToUpload, constants.F_OK)
+        logger.info('File exists and is accessible', { filePath: filePathToUpload })
+      } catch (error: any) {
+        logger.error('File does not exist or is not accessible', {
+          filePath: filePathToUpload,
+          error: error.message,
+          proofId: proof.id,
+        })
+        throw new Error(`File not found: ${filePathToUpload}`)
+      }
+
       // Upload to live-proof service
       const liveProofServiceModule = await import('#services/live_proof_service')
       const LiveProofService = liveProofServiceModule.default
 
       logger.info('Uploading scan to live-proof service', {
         resourceId: proof.resourceId,
-        tempPath,
+        filePath: filePathToUpload,
+        proofId: proof.id,
       })
-      await LiveProofService.uploadScan(proof.resourceId, tempPath)
-      logger.info('Scan uploaded successfully', { resourceId: proof.resourceId })
+      try {
+        await LiveProofService.uploadScan(proof.resourceId, filePathToUpload)
+        logger.info('Scan uploaded successfully', { resourceId: proof.resourceId })
+      } catch (uploadError: any) {
+        logger.error(`Failed to upload scan to live-proof service: ${uploadError.message}`, {
+          resourceId: proof.resourceId,
+          filePath: filePathToUpload,
+          proofId: proof.id,
+          errorMessage: uploadError.message,
+          errorName: uploadError.name,
+        })
+        if (uploadError.stack) {
+          logger.error('Upload error stack trace', { stack: uploadError.stack })
+        }
+        throw uploadError
+      }
 
       // Get the latest scan URL
       const scansResult = await LiveProofService.getScans(proof.resourceId)
@@ -337,21 +379,34 @@ export default class ProofsController {
         })
       }
 
-      // Clean up temp file
+      // Clean up temp files (both original and resized if different)
       try {
         await unlink(tempPath).catch(() => {})
-        logger.info('Temp file cleaned up', { tempPath })
+        logger.info('Original temp file cleaned up', { tempPath })
+
+        // If a resized file was created, clean it up too
+        if (filePathToUpload !== tempPath) {
+          await unlink(filePathToUpload).catch(() => {})
+          logger.info('Resized temp file cleaned up', { resizedPath: filePathToUpload })
+        }
       } catch (error: any) {
-        logger.warn('Failed to clean up temp file', { tempPath, error: error.message })
+        logger.warn('Failed to clean up temp file(s)', {
+          tempPath,
+          resizedPath: filePathToUpload !== tempPath ? filePathToUpload : undefined,
+          error: error.message,
+        })
       }
 
       return response.redirect().toRoute('proofs.show', { publicId: proof.publicId })
     } catch (error: any) {
-      logger.error('Error uploading live proof', {
+      logger.error(`Error uploading live proof: ${error.message}`, {
         proofPublicId: params.publicId,
-        error: error.message,
-        stack: error.stack,
+        errorMessage: error.message,
+        errorName: error.name,
       })
+      if (error.stack) {
+        logger.error('Full error stack trace', { stack: error.stack })
+      }
       return response.redirect().back()
     }
   }

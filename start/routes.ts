@@ -37,9 +37,13 @@ router
     router.get('/proofs', [ProofsController, 'index']).as('proofs.index')
     router.get('/proofs/:publicId', [ProofsController, 'show']).as('proofs.show')
     router.post('/proofs/:publicId', [ProofsController, 'update']).as('proofs.update')
-    router.post('/proofs/:publicId/status', [ProofsController, 'updateStatus']).as('proofs.updateStatus')
+    router
+      .post('/proofs/:publicId/status', [ProofsController, 'updateStatus'])
+      .as('proofs.updateStatus')
     router.post('/proofs/:publicId/delete', [ProofsController, 'destroy']).as('proofs.destroy')
-    router.get('/proofs/:publicId/live-proof', [ProofsController, 'showUploadForm']).as('proofs.upload')
+    router
+      .get('/proofs/:publicId/live-proof', [ProofsController, 'showUploadForm'])
+      .as('proofs.upload')
     router
       .post('/proofs/:publicId/live-proof', [ProofsController, 'uploadLiveProof'])
       .as('proofs.uploadLiveProof')
