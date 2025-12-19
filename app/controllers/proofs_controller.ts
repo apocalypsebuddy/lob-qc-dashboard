@@ -3,12 +3,12 @@ import logger from '@adonisjs/core/services/logger'
 import router from '@adonisjs/core/services/router'
 import Proof from '#models/proof'
 import { updateProofValidator, updateProofStatusValidator } from '#validators/proof'
-import { unlink, access } from 'node:fs/promises'
-import { constants } from 'node:fs'
+import { unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import LobClient from '#services/lob_client'
-import ImageResizeService from '#services/image_resize_service'
+import ImageResizeService, { MAX_UPLOAD_SIZE_BYTES } from '#services/image_resize_service'
+import ScanEventsService from '#services/scan_events_service'
 import { DateTime } from 'luxon'
 
 export default class ProofsController {
@@ -163,6 +163,39 @@ export default class ProofsController {
       // Continue without Lob details - they'll just be null
     }
 
+    // Fetch scan events for live proofs
+    let scanEvents = null
+    if (proof.resourceId) {
+      try {
+        const scanEventsResponse = await ScanEventsService.getScanEventByResourceId(
+          proof.resourceId
+        )
+        // Sort items by timestamp descending (most recent first)
+        const sortedItems = [...(scanEventsResponse.items || [])].sort((a, b) => {
+          const timestampA = new Date(a.timestamp || a.created_at || 0).getTime()
+          const timestampB = new Date(b.timestamp || b.created_at || 0).getTime()
+          return timestampB - timestampA
+        })
+        scanEvents = {
+          items: sortedItems,
+          count: scanEventsResponse.count || sortedItems.length,
+          hasMore: scanEventsResponse.hasMore || false,
+        }
+        logger.info('Fetched scan events', {
+          proofId: proof.id,
+          resourceId: proof.resourceId,
+          count: scanEvents.count,
+        })
+      } catch (error: any) {
+        logger.warn('Failed to fetch scan events', {
+          proofId: proof.id,
+          resourceId: proof.resourceId,
+          error: error.message,
+        })
+        // Continue without scan events - they'll just be null
+      }
+    }
+
     const proofData = {
       id: proof.id,
       seedId: proof.seedId,
@@ -187,6 +220,7 @@ export default class ProofsController {
       updateUrl: router.makeUrl('proofs.update', { publicId: proof.publicId }),
       updateStatusUrl: router.makeUrl('proofs.updateStatus', { publicId: proof.publicId }),
       lobDetails,
+      scanEvents,
     }
 
     // Encode proof data as base64 to avoid HTML escaping issues
@@ -272,23 +306,76 @@ export default class ProofsController {
         resourceId: proof.resourceId,
       })
 
+      // Log all files in the request for debugging
+      const allFiles = request.allFiles()
+      logger.info(
+        {
+          proofId: proof.id,
+          fileKeys: Object.keys(allFiles),
+          files: Object.entries(allFiles).map(([key, f]) => ({
+            key,
+            fileName: Array.isArray(f) ? f.map((x) => x.clientName) : (f as any)?.clientName,
+            extname: Array.isArray(f) ? f.map((x) => x.extname) : (f as any)?.extname,
+            type: Array.isArray(f) ? f.map((x) => x.type) : (f as any)?.type,
+            subtype: Array.isArray(f) ? f.map((x) => x.subtype) : (f as any)?.subtype,
+          })),
+        },
+        'All files in request'
+      )
+
       const file = request.file('photo', {
         size: '50mb', // Allow larger files initially, will be resized to under 4MB
-        extnames: ['jpg', 'jpeg', 'png'],
+        extnames: [
+          'jpg',
+          'jpeg',
+          'png',
+          'heic',
+          'heif',
+          'webp',
+          'JPG',
+          'JPEG',
+          'PNG',
+          'HEIC',
+          'HEIF',
+          'WEBP',
+        ],
       })
 
       if (!file) {
-        logger.warn('No file uploaded', { proofId: proof.id })
+        logger.warn({ proofId: proof.id }, 'No file uploaded')
         return response.redirect().back()
       }
 
-      if (!file.isValid) {
-        logger.warn('Invalid file uploaded', {
+      // Log detailed file info for debugging
+      logger.info(
+        {
           proofId: proof.id,
-          errors: file.errors,
+          clientName: file.clientName,
           fileName: file.fileName,
+          extname: file.extname,
+          type: file.type,
+          subtype: file.subtype,
           size: file.size,
-        })
+          isValid: file.isValid,
+          errors: file.errors,
+        },
+        'File details before validation'
+      )
+
+      if (!file.isValid) {
+        logger.warn(
+          {
+            proofId: proof.id,
+            errors: file.errors,
+            clientName: file.clientName,
+            fileName: file.fileName,
+            extname: file.extname,
+            type: file.type,
+            subtype: file.subtype,
+            size: file.size,
+          },
+          'Invalid file uploaded'
+        )
         return response.redirect().back()
       }
 
@@ -317,19 +404,6 @@ export default class ProofsController {
         proofId: proof.id,
       })
 
-      // Verify the file exists before uploading
-      try {
-        await access(filePathToUpload, constants.F_OK)
-        logger.info('File exists and is accessible', { filePath: filePathToUpload })
-      } catch (error: any) {
-        logger.error('File does not exist or is not accessible', {
-          filePath: filePathToUpload,
-          error: error.message,
-          proofId: proof.id,
-        })
-        throw new Error(`File not found: ${filePathToUpload}`)
-      }
-
       // Upload to live-proof service
       const liveProofServiceModule = await import('#services/live_proof_service')
       const LiveProofService = liveProofServiceModule.default
@@ -337,24 +411,9 @@ export default class ProofsController {
       logger.info('Uploading scan to live-proof service', {
         resourceId: proof.resourceId,
         filePath: filePathToUpload,
-        proofId: proof.id,
       })
-      try {
-        await LiveProofService.uploadScan(proof.resourceId, filePathToUpload)
-        logger.info('Scan uploaded successfully', { resourceId: proof.resourceId })
-      } catch (uploadError: any) {
-        logger.error(`Failed to upload scan to live-proof service: ${uploadError.message}`, {
-          resourceId: proof.resourceId,
-          filePath: filePathToUpload,
-          proofId: proof.id,
-          errorMessage: uploadError.message,
-          errorName: uploadError.name,
-        })
-        if (uploadError.stack) {
-          logger.error('Upload error stack trace', { stack: uploadError.stack })
-        }
-        throw uploadError
-      }
+      await LiveProofService.uploadScan(proof.resourceId, filePathToUpload)
+      logger.info('Scan uploaded successfully', { resourceId: proof.resourceId })
 
       // Get the latest scan URL
       const scansResult = await LiveProofService.getScans(proof.resourceId)
@@ -399,14 +458,17 @@ export default class ProofsController {
 
       return response.redirect().toRoute('proofs.show', { publicId: proof.publicId })
     } catch (error: any) {
-      logger.error(`Error uploading live proof: ${error.message}`, {
-        proofPublicId: params.publicId,
-        errorMessage: error.message,
-        errorName: error.name,
-      })
-      if (error.stack) {
-        logger.error('Full error stack trace', { stack: error.stack })
-      }
+      logger.error(
+        {
+          proofPublicId: params.publicId,
+          error: error.message,
+          errorName: error.name,
+          errorCode: error.code,
+          stack: error.stack,
+          cause: error.cause,
+        },
+        'Error uploading live proof'
+      )
       return response.redirect().back()
     }
   }
@@ -504,6 +566,527 @@ export default class ProofsController {
         general: 'Failed to delete proof. Please try again.',
       })
       return response.redirect().back()
+    }
+  }
+
+  async indexOrphanProofs({ view, auth, request }: HttpContext) {
+    const user = auth.getUserOrFail()
+    const csrfToken = request.csrfToken
+
+    try {
+      const scanEvents = await ScanEventsService.getScanEvents()
+      const groups = scanEvents.groups || []
+      logger.info(
+        `Fetched scan events for orphan proofs - groups count: ${groups.length}, total resources: ${scanEvents.summary?.total_resources || 0}`
+      )
+
+      // Generate URLs for each group
+      const groupsWithUrls = groups.map((group) => ({
+        ...group,
+        showUrl: router.makeUrl('proofs.showOrphanProof', { resourceId: group.resource_id }),
+      }))
+
+      logger.info(`Processed groups with URLs - count: ${groupsWithUrls.length}`)
+
+      // Encode groups data as base64 to avoid HTML escaping issues
+      const groupsJson = JSON.stringify(groupsWithUrls)
+      const groupsBase64 = Buffer.from(groupsJson, 'utf-8').toString('base64')
+
+      return view.render('proofs/orphan-index', {
+        groups: groupsWithUrls,
+        groupsBase64,
+        csrfToken,
+      })
+    } catch (error: any) {
+      logger.error('Error fetching orphan proofs', {
+        userId: user.id,
+        error: error.message,
+        stack: error.stack,
+      })
+      return view.render('proofs/orphan-index', {
+        groups: [],
+        groupsBase64: Buffer.from(JSON.stringify([]), 'utf-8').toString('base64'),
+        csrfToken,
+        error: `Failed to load orphan proofs: ${error.message}`,
+      })
+    }
+  }
+
+  async indexFactoryProofs({ view, auth, request }: HttpContext) {
+    const user = auth.getUserOrFail()
+    const csrfToken = request.csrfToken
+
+    try {
+      const scanEvents = await ScanEventsService.getScanEvents()
+      const groups = scanEvents.groups || []
+      logger.info(
+        `Fetched scan events for factory proofs - groups count: ${groups.length}, total resources: ${scanEvents.summary?.total_resources || 0}`
+      )
+
+      // Generate URLs for each group
+      const groupsWithUrls = groups.map((group) => ({
+        ...group,
+        showUrl: router.makeUrl('proofs.showFactoryProof', { resourceId: group.resource_id }),
+      }))
+
+      logger.info(`Processed groups with URLs - count: ${groupsWithUrls.length}`)
+
+      // Encode groups data as base64 to avoid HTML escaping issues
+      const groupsJson = JSON.stringify(groupsWithUrls)
+      const groupsBase64 = Buffer.from(groupsJson, 'utf-8').toString('base64')
+
+      return view.render('proofs/factory-index', {
+        groups: groupsWithUrls,
+        groupsBase64,
+        csrfToken,
+      })
+    } catch (error: any) {
+      logger.error('Error fetching factory proofs', {
+        userId: user.id,
+        error: error.message,
+        stack: error.stack,
+      })
+      return view.render('proofs/factory-index', {
+        groups: [],
+        groupsBase64: Buffer.from(JSON.stringify([]), 'utf-8').toString('base64'),
+        csrfToken,
+        error: `Failed to load factory proofs: ${error.message}`,
+      })
+    }
+  }
+
+  async showOrphanProof({ params, view, auth, request }: HttpContext) {
+    const user = auth.getUserOrFail()
+    const csrfToken = request.csrfToken
+    const resourceId = params.resourceId
+
+    try {
+      const scanEvent = await ScanEventsService.getScanEventByResourceId(resourceId)
+      const items = scanEvent.items || []
+
+      // Sort items by timestamp descending
+      const sortedItems = [...items].sort((a, b) => {
+        const timestampA = new Date(a.timestamp || a.created_at || 0).getTime()
+        const timestampB = new Date(b.timestamp || b.created_at || 0).getTime()
+        return timestampB - timestampA
+      })
+
+      // Encode data as base64
+      const dataJson = JSON.stringify({ resourceId, items: sortedItems })
+      const dataBase64 = Buffer.from(dataJson, 'utf-8').toString('base64')
+
+      return view.render('proofs/orphan-show', {
+        resourceId,
+        items: sortedItems,
+        dataBase64,
+        csrfToken,
+      })
+    } catch (error: any) {
+      logger.error('Error fetching orphan proof detail', {
+        userId: user.id,
+        resourceId,
+        error: error.message,
+        stack: error.stack,
+      })
+      return view.render('proofs/orphan-show', {
+        resourceId,
+        items: [],
+        dataBase64: Buffer.from(JSON.stringify({ resourceId, items: [] }), 'utf-8').toString(
+          'base64'
+        ),
+        csrfToken,
+        error: 'Failed to load proof details. Please try again.',
+      })
+    }
+  }
+
+  async showFactoryProof({ params, view, auth, request }: HttpContext) {
+    const user = auth.getUserOrFail()
+    const csrfToken = request.csrfToken
+    const resourceId = params.resourceId
+
+    try {
+      const scanEvent = await ScanEventsService.getScanEventByResourceId(resourceId)
+      const items = scanEvent.items || []
+
+      // Sort items by timestamp descending
+      const sortedItems = [...items].sort((a, b) => {
+        const timestampA = new Date(a.timestamp || a.created_at || 0).getTime()
+        const timestampB = new Date(b.timestamp || b.created_at || 0).getTime()
+        return timestampB - timestampA
+      })
+
+      // Encode data as base64
+      const dataJson = JSON.stringify({ resourceId, items: sortedItems })
+      const dataBase64 = Buffer.from(dataJson, 'utf-8').toString('base64')
+
+      return view.render('proofs/factory-show', {
+        resourceId,
+        items: sortedItems,
+        dataBase64,
+        csrfToken,
+      })
+    } catch (error: any) {
+      logger.error('Error fetching factory proof detail', {
+        userId: user.id,
+        resourceId,
+        error: error.message,
+        stack: error.stack,
+      })
+      return view.render('proofs/factory-show', {
+        resourceId,
+        items: [],
+        dataBase64: Buffer.from(JSON.stringify({ resourceId, items: [] }), 'utf-8').toString(
+          'base64'
+        ),
+        csrfToken,
+        error: 'Failed to load proof details. Please try again.',
+      })
+    }
+  }
+
+  async uploadOrphanProof({ request, response, auth, session }: HttpContext) {
+    try {
+      const user = auth.getUserOrFail()
+      logger.info('Uploading orphan proof', { userId: user.id })
+
+      const resourceId = request.input('resource_id') as string
+      if (!resourceId) {
+        session.flash('errors', { general: 'Resource ID is required' })
+        return response.redirect().back()
+      }
+
+      const batchId = request.input('batch_id') as string | undefined
+
+      const file = request.file('file', {
+        size: '50mb', // Allow larger files initially, will be resized to under 2MB
+        extnames: [
+          'jpg',
+          'jpeg',
+          'png',
+          'heic',
+          'heif',
+          'webp',
+          'JPG',
+          'JPEG',
+          'PNG',
+          'HEIC',
+          'HEIF',
+          'WEBP',
+        ],
+      })
+
+      if (!file) {
+        session.flash('errors', { general: 'No file uploaded' })
+        return response.redirect().back()
+      }
+
+      if (!file.isValid) {
+        logger.warn('Invalid file uploaded', {
+          errors: file.errors,
+          fileName: file.fileName,
+          size: file.size,
+        })
+        session.flash('errors', { general: 'Invalid file. Please upload a JPG or PNG image.' })
+        return response.redirect().back()
+      }
+
+      logger.info('File validated', {
+        fileName: file.fileName,
+        size: file.size,
+        extname: file.extname,
+        resourceId,
+        batchId,
+      })
+
+      // Process main file
+      const tempDir = tmpdir()
+      await file.move(tempDir, { overwrite: true })
+      const tempPath = join(tempDir, file.fileName!)
+      logger.info('File saved to temp location', { tempPath, resourceId })
+
+      const filePathToUpload = await ImageResizeService.resizeImageIfNeeded(
+        tempPath,
+        MAX_UPLOAD_SIZE_BYTES
+      )
+      logger.info('Image resize check completed', {
+        originalPath: tempPath,
+        uploadPath: filePathToUpload,
+        isResized: filePathToUpload !== tempPath,
+        resourceId,
+      })
+
+      // Upload main file to scan events service
+      logger.info('Uploading scan to scan events service', {
+        resourceId,
+        filePath: filePathToUpload,
+        batchId,
+      })
+      await ScanEventsService.uploadScan(resourceId, filePathToUpload, batchId)
+      logger.info('Scan uploaded successfully', { resourceId })
+
+      // Clean up main file temp files
+      try {
+        await unlink(tempPath).catch(() => {})
+        if (filePathToUpload !== tempPath) {
+          await unlink(filePathToUpload).catch(() => {})
+        }
+      } catch (error: any) {
+        logger.warn('Failed to clean up temp file(s)', {
+          tempPath,
+          resizedPath: filePathToUpload !== tempPath ? filePathToUpload : undefined,
+          error: error.message,
+        })
+      }
+
+      // Process additional file if provided
+      const additionalFile = request.file('additional_file', {
+        size: '50mb',
+        extnames: [
+          'jpg',
+          'jpeg',
+          'png',
+          'heic',
+          'heif',
+          'webp',
+          'JPG',
+          'JPEG',
+          'PNG',
+          'HEIC',
+          'HEIF',
+          'WEBP',
+        ],
+      })
+
+      if (additionalFile && additionalFile.isValid) {
+        logger.info('Processing additional file', {
+          fileName: additionalFile.fileName,
+          size: additionalFile.size,
+          resourceId,
+        })
+
+        await additionalFile.move(tempDir, { overwrite: true })
+        const additionalTempPath = join(tempDir, additionalFile.fileName!)
+
+        const additionalFilePathToUpload = await ImageResizeService.resizeImageIfNeeded(
+          additionalTempPath,
+          MAX_UPLOAD_SIZE_BYTES
+        )
+
+        // Upload additional file to scan events service
+        logger.info('Uploading additional scan to scan events service', {
+          resourceId,
+          filePath: additionalFilePathToUpload,
+          batchId,
+        })
+        await ScanEventsService.uploadScan(resourceId, additionalFilePathToUpload, batchId)
+        logger.info('Additional scan uploaded successfully', { resourceId })
+
+        // Clean up additional file temp files
+        try {
+          await unlink(additionalTempPath).catch(() => {})
+          if (additionalFilePathToUpload !== additionalTempPath) {
+            await unlink(additionalFilePathToUpload).catch(() => {})
+          }
+        } catch (error: any) {
+          logger.warn('Failed to clean up additional temp file(s)', {
+            tempPath: additionalTempPath,
+            resizedPath:
+              additionalFilePathToUpload !== additionalTempPath
+                ? additionalFilePathToUpload
+                : undefined,
+            error: error.message,
+          })
+        }
+      }
+
+      session.flash('success', 'Proof uploaded successfully!')
+      return response.redirect().toRoute('proofs.indexOrphanProofs')
+    } catch (error: any) {
+      logger.error('Error uploading orphan proof', {
+        userId: auth.user?.id,
+        error: error.message,
+        stack: error.stack,
+      })
+      session.flash('errors', {
+        general: 'Failed to upload proof. Please try again.',
+      })
+      return response.redirect().back()
+    }
+  }
+
+  async uploadFactoryProof({ request, response, auth, session }: HttpContext) {
+    try {
+      const user = auth.getUserOrFail()
+      logger.info('Uploading factory proof(s)', { userId: user.id })
+
+      const files = request.files('files', {
+        size: '50mb', // Allow larger files initially, will be resized to under 2MB
+        extnames: [
+          'jpg',
+          'jpeg',
+          'png',
+          'heic',
+          'heif',
+          'webp',
+          'JPG',
+          'JPEG',
+          'PNG',
+          'HEIC',
+          'HEIF',
+          'WEBP',
+        ],
+      })
+
+      if (!files || files.length === 0) {
+        session.flash('errors', { general: 'No files uploaded' })
+        return response.redirect().back()
+      }
+
+      const tempDir = tmpdir()
+      const uploadPromises: Promise<void>[] = []
+      const tempPaths: string[] = []
+
+      for (const file of files) {
+        if (!file.isValid) {
+          logger.warn('Invalid file in upload', {
+            errors: file.errors,
+            fileName: file.fileName,
+            size: file.size,
+          })
+          continue
+        }
+
+        // Parse filename to extract resource_id
+        // Format: resourceId_01.png, resourceId_02.jpg, etc.
+        const fileName = file.fileName || ''
+        const match = fileName.match(/^(.+?)_(\d+)(\.[^.]+)?$/)
+        if (!match) {
+          logger.warn('Filename does not match expected pattern', { fileName })
+          continue
+        }
+
+        const resourceId = match[1]
+        const sequence = match[2]
+
+        logger.info('Processing file', {
+          fileName,
+          resourceId,
+          sequence,
+          size: file.size,
+        })
+
+        // Save file to temp location
+        await file.move(tempDir, { overwrite: true })
+        const tempPath = join(tempDir, file.fileName!)
+        tempPaths.push(tempPath)
+
+        // Resize image if needed
+        const filePathToUpload = await ImageResizeService.resizeImageIfNeeded(
+          tempPath,
+          MAX_UPLOAD_SIZE_BYTES
+        )
+
+        // Upload to scan events service
+        uploadPromises.push(
+          ScanEventsService.uploadScan(resourceId, filePathToUpload)
+            .then(() => {
+              logger.info('Scan uploaded successfully', { resourceId, fileName })
+            })
+            .catch((error: any) => {
+              logger.error('Failed to upload scan', {
+                resourceId,
+                fileName,
+                error: error.message,
+              })
+              throw error
+            })
+            .finally(() => {
+              // Clean up temp files
+              unlink(tempPath).catch(() => {})
+              if (filePathToUpload !== tempPath) {
+                unlink(filePathToUpload).catch(() => {})
+              }
+            })
+        )
+      }
+
+      await Promise.all(uploadPromises)
+
+      session.flash('success', `Successfully uploaded ${uploadPromises.length} proof(s)!`)
+      return response.redirect().toRoute('proofs.indexFactoryProofs')
+    } catch (error: any) {
+      logger.error('Error uploading factory proof', {
+        userId: auth.user?.id,
+        error: error.message,
+        stack: error.stack,
+      })
+      session.flash('errors', {
+        general: 'Failed to upload proof(s). Please try again.',
+      })
+      return response.redirect().back()
+    }
+  }
+
+  async detectResourceId({ request, response, auth }: HttpContext) {
+    try {
+      const user = auth.getUserOrFail()
+      logger.info('Detecting resource ID', { userId: user.id })
+
+      const file = request.file('file', {
+        size: '50mb',
+        extnames: [
+          'jpg',
+          'jpeg',
+          'png',
+          'heic',
+          'heif',
+          'webp',
+          'JPG',
+          'JPEG',
+          'PNG',
+          'HEIC',
+          'HEIF',
+          'WEBP',
+        ],
+      })
+
+      if (!file) {
+        return response.status(400).json({ error: 'No file uploaded' })
+      }
+
+      if (!file.isValid) {
+        return response.status(400).json({ error: 'Invalid file' })
+      }
+
+      // Save file to temp location
+      const tempDir = tmpdir()
+      await file.move(tempDir, { overwrite: true })
+      const tempPath = join(tempDir, file.fileName!)
+
+      try {
+        // Call detection service (placeholder for now)
+        const result = await ScanEventsService.detectResourceId(tempPath)
+        return response.json(result)
+      } catch (error: any) {
+        logger.error('Error detecting resource ID', {
+          error: error.message,
+          stack: error.stack,
+        })
+        return response.status(500).json({
+          error: 'Resource ID detection is not yet implemented',
+        })
+      } finally {
+        // Clean up temp file
+        await unlink(tempPath).catch(() => {})
+      }
+    } catch (error: any) {
+      logger.error('Error in detectResourceId', {
+        userId: auth.user?.id,
+        error: error.message,
+        stack: error.stack,
+      })
+      return response.status(500).json({ error: 'Failed to detect resource ID' })
     }
   }
 }

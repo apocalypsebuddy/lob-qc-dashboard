@@ -58,6 +58,12 @@
             Create Seed
           </h2>
 
+          <div class="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
+            <p class="text-sm text-blue-800">
+              <strong>Note:</strong> Only 6x9 postcards are currently supported.
+            </p>
+          </div>
+
           <form method="POST" action="{{ route('seeds.store') }}" enctype="multipart/form-data">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
 

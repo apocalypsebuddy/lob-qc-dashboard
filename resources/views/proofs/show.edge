@@ -22,7 +22,7 @@
               <a
                 href="{{ route('seeds.index') }}"
                 class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-              >Seeds</a>
+              >Seed templates</a>
               <a
                 href="{{ route('proofs.index') }}"
                 class="border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
@@ -71,139 +71,152 @@
           const proof = JSON.parse(atob(proofBase64));
         </script>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div class="bg-white shadow rounded-lg p-6">
-            <h2 class="text-xl font-semibold mb-4">
-              Proof Information
-            </h2>
-            <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-              <div>
-                <dt class="text-sm font-medium text-gray-500">
-                  Seed
-                </dt>
-                <dd class="mt-1 text-sm text-gray-900">
-                  @if(proof.seedShowUrl)
-                    <a href="{{ proof.seedShowUrl }}" class="text-blue-600 hover:text-blue-800 underline">{{ proof.seedName }}</a>
-                  @else
-                    <span class="{{ proof.isOrphaned ? 'text-gray-500 italic' : '' }}">{{ proof.seedName }}</span>
-                    @if(proof.isOrphaned)
-                      <span class="text-xs text-gray-400 ml-1">(seed deleted)</span>
-                    @endif
+        <!-- Proof Information - Full Width Top Row -->
+        <div class="bg-white shadow rounded-lg p-6 mb-6">
+          <h2 class="text-xl font-semibold mb-4">
+            Proof Information
+          </h2>
+
+          <dl class="grid grid-cols-2 lg:grid-cols-6 gap-x-10 lg:gap-x-6 gap-y-2">
+            <div>
+              <dt class="text-xs font-medium text-gray-500">
+                Seed
+              </dt>
+              <dd class="mt-0.5 text-sm text-gray-900">
+                @if(proof.seedShowUrl)
+                  <a href="{{ proof.seedShowUrl }}" class="text-blue-600 hover:text-blue-800 underline">{{ proof.seedName }}</a>
+                @else
+                  <span class="{{ proof.isOrphaned ? 'text-gray-500 italic' : '' }}">{{ proof.seedName }}</span>
+                  @if(proof.isOrphaned)
+                    <span class="text-xs text-gray-400 ml-1">(seed deleted)</span>
                   @endif
-                </dd>
-              </div>
+                @endif
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs font-medium text-gray-500">
+                Status
+              </dt>
+              <dd class="mt-0.5">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">{{ proof.status }}</span>
+              </dd>
+            </div>
+            <div id="resource-id">
+            </div>
+            @if(proof.publicId)
               <div>
-                <dt class="text-sm font-medium text-gray-500">
-                  Status
+                <dt class="text-xs font-medium text-gray-500">
+                  Public ID
                 </dt>
-                <dd class="mt-1">
-                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">{{ proof.status }}</span>
+                <dd class="mt-0.5 text-sm text-gray-900 font-mono">
+                  {{ proof.publicId }}
                 </dd>
               </div>
-              @if(proof.publicId)
+            @endif
+            <div id="size">
+            </div>
+            <div id="mail-type">
+            </div>
+            <div id="date-created">
+            </div>
+            <div id="send-date">
+            </div>
+            <div id="expected-delivery-date">
+            </div>
+            <div id="tracking-number">
+            </div>
+            <div id="delivered-at">
+            </div>
+          </dl>
+
+          <script>
+            if (proof.resourceId) {
+              document.getElementById("resource-id").innerHTML = `
                 <div>
-                  <dt class="text-sm font-medium text-gray-500">
-                    Public ID
-                  </dt>
-                  <dd class="mt-1 text-sm text-gray-900 font-mono">
-                    {{ proof.publicId }}
+                  <dt class="text-xs font-medium text-gray-500">Resource ID</dt>
+                  <dd class="mt-0.5 text-sm text-gray-900 font-mono">
+                    <a href="https://dashboard.lob.com/postcards/${proof.resourceId}" target="_blank" class="text-blue-600 hover:text-blue-800">${proof.resourceId}</a>
                   </dd>
                 </div>
-              @endif
-              <div id="resource-id">
-              </div>
-              <div id="tracking-number">
-              </div>
-              <div id="delivered-at">
-              </div>
-              <div id="lob-details">
-              </div>
-            </dl>
-            <script>
-              if (proof.resourceId) {
-                document.getElementById("resource-id").innerHTML = `
-                                              <div>
-                                                <dt class="text-sm font-medium text-gray-500">Resource ID</dt>
-                                                <dd class="mt-1 text-sm text-gray-900 font-mono">
-                                                  <a href="https://dashboard.lob.com/postcards/${proof.resourceId}" target="_blank" class="text-blue-600 hover:text-blue-800">${proof.resourceId}</a>
-                                                </dd>
-                                              </div>
-                                            `;
+              `;
+            }
+
+            if (proof.trackingNumber) {
+              document.getElementById("tracking-number").innerHTML = `
+                <div>
+                  <dt class="text-xs font-medium text-gray-500">Tracking Number</dt>
+                  <dd class="mt-0.5 text-sm text-gray-900">${proof.trackingNumber}</dd>
+                </div>
+              `;
+            }
+
+            if (proof.deliveredAt) {
+              document.getElementById("delivered-at").innerHTML = `
+                <div>
+                  <dt class="text-xs font-medium text-gray-500">Delivered At</dt>
+                  <dd class="mt-0.5 text-sm text-gray-900">${proof.deliveredAt}</dd>
+                </div>
+              `;
+            }
+
+            if (proof.lobDetails) {
+              const details = proof.lobDetails;
+
+              if (details.size) {
+                document.getElementById("size").innerHTML = `
+                  <div>
+                    <dt class="text-xs font-medium text-gray-500">Size</dt>
+                    <dd class="mt-0.5 text-sm text-gray-900">${details.size}</dd>
+                  </div>
+                `;
               }
 
-              if (proof.trackingNumber) {
-                document.getElementById("tracking-number").innerHTML = `
-                                              <div>
-                                                <dt class="text-sm font-medium text-gray-500">Tracking Number</dt>
-                                                <dd class="mt-1 text-sm text-gray-900">${proof.trackingNumber}</dd>
-                                              </div>
-                                            `;
+              if (details.mailType) {
+                document.getElementById("mail-type").innerHTML = `
+                  <div>
+                    <dt class="text-xs font-medium text-gray-500">Mail Type</dt>
+                    <dd class="mt-0.5 text-sm text-gray-900">${details.mailType}</dd>
+                  </div>
+                `;
               }
 
-              if (proof.deliveredAt) {
-                document.getElementById("delivered-at").innerHTML = `
-                                              <div>
-                                                <dt class="text-sm font-medium text-gray-500">Delivered At</dt>
-                                                <dd class="mt-1 text-sm text-gray-900">${proof.deliveredAt}</dd>
-                                              </div>
-                                            `;
+              if (details.dateCreated) {
+                document.getElementById("date-created").innerHTML = `
+                  <div>
+                    <dt class="text-xs font-medium text-gray-500">Date Created</dt>
+                    <dd class="mt-0.5 text-sm text-gray-900">${details.dateCreated}</dd>
+                  </div>
+                `;
               }
 
-              if (proof.lobDetails) {
-                const details = proof.lobDetails;
-                let detailsHtml = "";
-                if (details.size) {
-                  detailsHtml += `
-                                                <div>
-                                                  <dt class="text-sm font-medium text-gray-500">Size</dt>
-                                                  <dd class="mt-1 text-sm text-gray-900">${details.size}</dd>
-                                                </div>
-                                              `;
-                }
-                if (details.mailType) {
-                  detailsHtml += `
-                                                <div>
-                                                  <dt class="text-sm font-medium text-gray-500">Mail Type</dt>
-                                                  <dd class="mt-1 text-sm text-gray-900">${details.mailType}</dd>
-                                                </div>
-                                              `;
-                }
-                if (details.dateCreated) {
-                  detailsHtml += `
-                                                <div>
-                                                  <dt class="text-sm font-medium text-gray-500">Date Created</dt>
-                                                  <dd class="mt-1 text-sm text-gray-900">${details.dateCreated}</dd>
-                                                </div>
-                                              `;
-                }
-                if (details.sendDate) {
-                  detailsHtml += `
-                                                <div>
-                                                  <dt class="text-sm font-medium text-gray-500">Send Date</dt>
-                                                  <dd class="mt-1 text-sm text-gray-900">${details.sendDate}</dd>
-                                                </div>
-                                              `;
-                }
-                if (details.expectedDeliveryDate) {
-                  detailsHtml += `
-                                                <div>
-                                                  <dt class="text-sm font-medium text-gray-500">Expected Delivery Date Range</dt>
-                                                  <dd class="mt-1 text-sm text-gray-900">${details.expectedDeliveryDate}</dd>
-                                                </div>
-                                              `;
-                }
-                if (detailsHtml) {
-                  document.getElementById("lob-details").innerHTML = detailsHtml;
-                }
+              if (details.sendDate) {
+                document.getElementById("send-date").innerHTML = `
+                  <div>
+                    <dt class="text-xs font-medium text-gray-500">Send Date</dt>
+                    <dd class="mt-0.5 text-sm text-gray-900">${details.sendDate}</dd>
+                  </div>
+                `;
               }
-            </script>
-          </div>
 
+              if (details.expectedDeliveryDate) {
+                document.getElementById("expected-delivery-date").innerHTML = `
+                  <div>
+                    <dt class="text-xs font-medium text-gray-500">Expected Delivery Date Range</dt>
+                    <dd class="mt-0.5 text-sm text-gray-900">${details.expectedDeliveryDate}</dd>
+                  </div>
+                `;
+              }
+            }
+          </script>
+        </div>
+
+        <!-- Second Row: Lob Rendered Proofs and Live Proofs Side by Side -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div class="bg-white shadow rounded-lg p-6">
             <h2 class="text-xl font-semibold mb-4">
               Lob Rendered Proofs
             </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
               <div>
                 <h3 class="text-sm font-medium text-gray-700 mb-2">
                   Front
@@ -221,7 +234,7 @@
                   }
                 </script>
               </div>
-              <div>
+              <div class="hidden lg:block">
                 <h3 class="text-sm font-medium text-gray-700 mb-2">
                   Back
                 </h3>
@@ -236,7 +249,33 @@
                   }
                 </script>
               </div>
+              <!-- Back thumbnail for small screens (toggleable) -->
+              <div id="back-thumbnail-mobile" class="lg:hidden hidden">
+                <h3 class="text-sm font-medium text-gray-700 mb-2">
+                  Back
+                </h3>
+                <div id="back-thumbnail-mobile-content">
+                </div>
+              </div>
             </div>
+            <!-- Toggle link for small screens -->
+            <div id="show-back-link" class="lg:hidden mb-4">
+            </div>
+            <script>
+              // Set up back thumbnail for mobile
+              (function() {
+                const backThumbnailDiv = document.getElementById("back-thumbnail");
+                if (backThumbnailDiv && backThumbnailDiv.innerHTML && !backThumbnailDiv.innerHTML.includes("No back thumbnail")) {
+                  // Copy the content from desktop version
+                  document.getElementById("back-thumbnail-mobile-content").innerHTML = backThumbnailDiv.innerHTML;
+                  document.getElementById("show-back-link").innerHTML = `
+                    <button onclick="document.getElementById('back-thumbnail-mobile').classList.toggle('hidden'); this.textContent = document.getElementById('back-thumbnail-mobile').classList.contains('hidden') ? 'Show Back' : 'Hide Back';" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                      Show Back
+                    </button>
+                  `;
+                }
+              })();
+            </script>
             <div id="lob-urls" class="mt-4 pt-4 border-t border-gray-200">
             </div>
             <script>
@@ -253,31 +292,94 @@
               }
             </script>
           </div>
-        </div>
 
-        <div id="live-proof">
+          <div id="live-proof-section" class="bg-white shadow rounded-lg p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">
+              Live Proofs
+            </h2>
+            <a
+              href="{{ proof.uploadUrl }}"
+              class="inline-block bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md text-sm"
+            >
+              Capture / Upload
+            </a>
+          </div>
+          <div id="scan-events-content">
+          </div>
         </div>
         <script>
-          if (proof.liveProofUrl) {
-            document.getElementById("live-proof").innerHTML = `
-                                  <div class="mt-6 bg-white shadow rounded-lg p-6">
-                                    <h2 class="text-xl font-semibold mb-4">Live Proof</h2>
-                                    <img src="${proof.liveProofUrl}" alt="Live proof" class="max-w-full rounded-lg shadow-sm" />
-                                  </div>
-                                `;
-          }
-        </script>
+          (function() {
+            const container = document.getElementById("scan-events-content");
+            const scanEvents = proof.scanEvents;
 
-        <div class="mt-6 bg-white shadow rounded-lg p-6">
-          <h2 class="text-xl font-semibold mb-4">
-            Live Proofs
-          </h2>
-          <a
-            href="{{ proof.uploadUrl }}"
-            class="inline-block bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md"
-          >
-            Capture / Upload Live Proof
-          </a>
+            if (!scanEvents || !scanEvents.items || scanEvents.items.length === 0) {
+              container.innerHTML = `
+                <p class="text-gray-500 italic">No live proofs uploaded yet.</p>
+              `;
+              return;
+            }
+
+            const latestScan = scanEvents.items[0];
+            const secondScan = scanEvents.items.length > 1 ? scanEvents.items[1] : null;
+            const totalCount = scanEvents.count || scanEvents.items.length;
+
+            let html = `
+              <div class="space-y-4">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div>
+                    <a href="${latestScan.url}" target="_blank" rel="noopener noreferrer">
+                      <img
+                        src="${latestScan.url}"
+                        alt="Latest live proof"
+                        class="w-full rounded-lg shadow-sm hover:opacity-90 cursor-pointer"
+                      />
+                    </a>
+                    <p class="text-sm text-gray-500 mt-2">
+                      Uploaded: ${new Date(latestScan.timestamp || latestScan.created_at).toLocaleString()}
+                      ${latestScan.original_filename ? ` • ${latestScan.original_filename}` : ''}
+                    </p>
+                  </div>
+            `;
+
+            if (secondScan) {
+              html += `
+                  <div class="hidden lg:block">
+                    <a href="${secondScan.url}" target="_blank" rel="noopener noreferrer">
+                      <img
+                        src="${secondScan.url}"
+                        alt="Second live proof"
+                        class="w-full rounded-lg shadow-sm hover:opacity-90 cursor-pointer"
+                      />
+                    </a>
+                    <p class="text-sm text-gray-500 mt-2">
+                      Uploaded: ${new Date(secondScan.timestamp || secondScan.created_at).toLocaleString()}
+                      ${secondScan.original_filename ? ` • ${secondScan.original_filename}` : ''}
+                    </p>
+                  </div>
+              `;
+            }
+
+            html += `</div>`;
+
+            if (totalCount > (secondScan ? 2 : 1)) {
+              html += `
+                <div class="pt-4 border-t border-gray-200">
+                  <a
+                    href="/proofs/orphan/${proof.resourceId}"
+                    class="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                  >
+                    View all ${totalCount} uploaded images →
+                  </a>
+                </div>
+              `;
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+          })();
+        </script>
+          </div>
         </div>
 
         <div class="mt-6 bg-yellow-50 border border-yellow-200 shadow rounded-lg p-6">

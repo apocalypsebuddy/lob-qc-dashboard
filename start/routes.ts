@@ -35,6 +35,33 @@ router
     router.post('/seeds/:publicId/run', [SeedsController, 'run']).as('seeds.run')
 
     router.get('/proofs', [ProofsController, 'index']).as('proofs.index')
+
+    // Orphan proofs routes (must come before /proofs/:publicId to avoid route conflicts)
+    router
+      .get('/proofs/orphan', [ProofsController, 'indexOrphanProofs'])
+      .as('proofs.indexOrphanProofs')
+    router
+      .get('/proofs/orphan/:resourceId', [ProofsController, 'showOrphanProof'])
+      .as('proofs.showOrphanProof')
+    router
+      .post('/proofs/orphan/upload', [ProofsController, 'uploadOrphanProof'])
+      .as('proofs.uploadOrphanProof')
+    router
+      .post('/proofs/orphan/detect-resource-id', [ProofsController, 'detectResourceId'])
+      .as('proofs.detectResourceId')
+
+    // Factory proofs routes (must come before /proofs/:publicId to avoid route conflicts)
+    router
+      .get('/proofs/factory', [ProofsController, 'indexFactoryProofs'])
+      .as('proofs.indexFactoryProofs')
+    router
+      .get('/proofs/factory/:resourceId', [ProofsController, 'showFactoryProof'])
+      .as('proofs.showFactoryProof')
+    router
+      .post('/proofs/factory/upload', [ProofsController, 'uploadFactoryProof'])
+      .as('proofs.uploadFactoryProof')
+
+    // Seed proofs routes (database-backed proofs)
     router.get('/proofs/:publicId', [ProofsController, 'show']).as('proofs.show')
     router.post('/proofs/:publicId', [ProofsController, 'update']).as('proofs.update')
     router

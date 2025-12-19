@@ -1,5 +1,5 @@
 import { createReadStream, statSync } from 'node:fs'
-import { basename } from 'node:path'
+import { basename, extname } from 'node:path'
 import logger from '@adonisjs/core/services/logger'
 
 const LIVE_PROOF_ENDPOINT =
@@ -45,105 +45,79 @@ export default class LiveProofService {
     const FormData = formDataModule.default
     const formData = new FormData()
 
-    const fileName = basename(filePath)
-    let fileSize = 0
+    // Determine content type based on file extension
+    const ext = extname(filePath).toLowerCase()
+    const contentTypeMap: Record<string, string> = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.heic': 'image/heic',
+      '.heif': 'image/heif',
+      '.webp': 'image/webp',
+    }
+    const contentType = contentTypeMap[ext] || 'image/jpeg'
+
+    // Check if file exists and get size
+    let fileSize: number
     try {
       const stats = statSync(filePath)
       fileSize = stats.size
-    } catch (error: any) {
-      logger.warn('Could not get file stats', { filePath, error: error.message })
+    } catch (err: any) {
+      logger.error({ filePath, error: err.message }, 'File not found or cannot be read')
+      throw new Error(`Cannot read file: ${filePath}`)
     }
 
-    logger.info('Preparing file upload to live-proof service', {
-      resourceId,
-      filePath,
-      fileName,
-      fileSize,
-      endpoint: LIVE_PROOF_ENDPOINT,
-    })
+    logger.info(
+      {
+        resourceId,
+        filePath,
+        fileName: basename(filePath),
+        contentType,
+        fileSize,
+        ext,
+      },
+      'Preparing upload to live-proof service'
+    )
 
     formData.append('resource_id', resourceId)
     formData.append('file', createReadStream(filePath), {
-      filename: fileName,
-      contentType: 'image/jpeg',
+      filename: basename(filePath),
+      contentType,
     })
 
     // Use node-fetch compatible approach
     const fetchModule = await import('node-fetch')
     const fetch = fetchModule.default
 
-    try {
-      logger.info('Sending request to live-proof service', {
-        resourceId,
-        fileName,
-        fileSize,
-        endpoint: LIVE_PROOF_ENDPOINT,
-      })
+    logger.info({ endpoint: LIVE_PROOF_ENDPOINT, resourceId }, 'Sending request to live-proof service')
 
-      const response = await fetch(LIVE_PROOF_ENDPOINT, {
-        method: 'POST',
-        body: formData as any,
-        headers: formData.getHeaders(),
-      })
+    const response = await fetch(LIVE_PROOF_ENDPOINT, {
+      method: 'POST',
+      body: formData as any,
+      headers: formData.getHeaders(),
+    })
 
-      const status = response.status
-      const statusText = response.statusText
-      logger.info(`Received response from live-proof service: ${status} ${statusText}`, {
-        resourceId,
-        status,
-        statusText,
-        fileName,
-        fileSize,
-      })
+    logger.info(
+      { status: response.status, statusText: response.statusText, resourceId },
+      'Received response from live-proof service'
+    )
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        logger.error(`Live proof service ERROR: ${status} ${statusText}`, {
-          resourceId,
-          status,
-          statusText,
-          fileName,
-          fileSize,
-        })
-        logger.error(`Error response body: ${errorText}`)
-        logger.error('Full error details', {
-          resourceId,
-          status,
-          statusText,
+    if (!response.ok) {
+      const errorText = await response.text()
+      logger.error(
+        {
+          status: response.status,
+          statusText: response.statusText,
           errorText,
-          fileName,
-          fileSize,
-          endpoint: LIVE_PROOF_ENDPOINT,
-        })
-        const errorMessage = `Live proof service error: ${status} ${statusText} - ${errorText}`
-        throw new Error(errorMessage)
-      }
-
-      const result = await response.json()
-      logger.info('Successfully uploaded to live-proof service', {
-        resourceId,
-        fileName,
-        result,
-      })
-      return result as UploadScanResponse
-    } catch (error: any) {
-      logger.error(`Exception during live-proof service upload: ${error.message}`, {
-        resourceId,
-        fileName,
-        fileSize,
-        errorMessage: error.message,
-        errorName: error.name,
-        endpoint: LIVE_PROOF_ENDPOINT,
-      })
-      if (error.stack) {
-        logger.error('Error stack trace', { stack: error.stack })
-      }
-      // Re-throw with more context if it's not already our error
-      if (error.message && error.message.includes('Live proof service error')) {
-        throw error
-      }
-      throw new Error(`Failed to upload file to live proof service: ${error.message}`)
+          resourceId,
+          filePath,
+        },
+        'Live proof service returned error'
+      )
+      throw new Error(`Live proof service error: ${response.status} - ${errorText}`)
     }
+
+    return response.json() as Promise<UploadScanResponse>
   }
 
   /**

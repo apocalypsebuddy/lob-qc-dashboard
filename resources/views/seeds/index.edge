@@ -23,7 +23,7 @@
                 href="{{ route('seeds.index') }}"
                 class="border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
               >
-                Seeds
+                Seed templates
               </a>
               <a
                 href="{{ route('proofs.index') }}"
@@ -40,13 +40,33 @@
             </div>
           </div>
           <div class="flex items-center">
-            <form method="POST" action="{{ route('auth.logout') }}">
+            <!-- Mobile menu button -->
+            <button type="button" onclick="document.getElementById('mobileMenu').classList.toggle('hidden')" class="sm:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500">
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <form method="POST" action="{{ route('auth.logout') }}" class="hidden sm:block">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
               <button type="submit" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium">
                 Logout
               </button>
             </form>
           </div>
+        </div>
+      </div>
+      <!-- Mobile menu -->
+      <div id="mobileMenu" class="hidden sm:hidden border-t border-gray-200">
+        <div class="pt-2 pb-3 space-y-1">
+          <a href="{{ route('seeds.index') }}" class="block pl-3 pr-4 py-2 border-l-4 border-blue-500 text-base font-medium text-blue-700 bg-blue-50">Seed templates</a>
+          <a href="{{ route('proofs.index') }}" class="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300">Proofs</a>
+          <a href="{{ route('settings.edit') }}" class="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300">Settings</a>
+        </div>
+        <div class="pt-4 pb-3 border-t border-gray-200">
+          <form method="POST" action="{{ route('auth.logout') }}">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+            <button type="submit" class="block w-full text-left pl-3 pr-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50">Logout</button>
+          </form>
         </div>
       </div>
     </nav>
@@ -78,55 +98,87 @@
 
           if (!seeds || seeds.length === 0) {
             container.innerHTML = `
-                                  <div class="bg-white shadow rounded-lg p-8 text-center">
-                                    <p class="text-gray-500 mb-4">No seeds yet. Create your first seed to get started.</p>
-                                    <a href="{{ route('seeds.create') }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">Create Seed</a>
-                                  </div>
-                                `;
+              <div class="bg-white shadow rounded-lg p-8 text-center">
+                <p class="text-gray-500 mb-4">No seeds yet. Create your first seed to get started.</p>
+                <a href="{{ route('seeds.create') }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">Create Seed</a>
+              </div>
+            `;
           } else {
+            // Mobile cards
+            const cards = seeds.map(seed => `
+              <div class="bg-white shadow rounded-lg p-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors" onclick="window.location.href='${seed.showUrl}'">
+                <div class="flex items-center justify-between mb-3">
+                  <a href="${seed.showUrl}" class="text-blue-600 hover:text-blue-800 font-medium text-lg truncate" onclick="event.stopPropagation()">${seed.name}</a>
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${seed.statusClass} ml-2 flex-shrink-0">${seed.status}</span>
+                </div>
+                <div class="space-y-1 text-sm text-gray-500">
+                  <div class="flex justify-between">
+                    <span>Cadence:</span>
+                    <span>${seed.cadence}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span>Created:</span>
+                    <span>${seed.createdAt}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span>Last Run:</span>
+                    <span>${seed.lastRunAt || "Never"}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span>Next Run:</span>
+                    <span>${seed.nextRunAt || "N/A"}</span>
+                  </div>
+                </div>
+                <div class="flex justify-end mt-3 pt-3 border-t border-gray-100 space-x-4">
+                  <a href="${seed.showUrl}" class="text-blue-600 hover:text-blue-800 text-sm" onclick="event.stopPropagation()">View</a>
+                  <a href="${seed.editUrl}" class="text-green-600 hover:text-green-800 text-sm" onclick="event.stopPropagation()">Edit</a>
+                  <button type="button" onclick="event.stopPropagation(); showDeleteDialog(${seed.proofCount}, '${seed.deleteUrl}', '${csrfToken}')" class="text-red-600 hover:text-red-800 text-sm">Delete</button>
+                </div>
+              </div>
+            `).join("");
+
+            // Desktop table rows
             const rows = seeds.map(seed => `
-                                  <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                      <a href="${seed.showUrl}" class="text-blue-600 hover:text-blue-800 font-medium">${seed.name}</a>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.createdAt}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${seed.statusClass}">${seed.status}</span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.cadence}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.lastRunAt || "Never"}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.nextRunAt || "N/A"}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                                      <a href="${seed.showUrl}" class="text-blue-600 hover:text-blue-800">View</a>
-                                      <a href="${seed.editUrl}" class="text-green-600 hover:text-green-800">Edit</a>
-                                      <button
-                                        type="button"
-                                        onclick="showDeleteDialog(${seed.proofCount}, '${seed.deleteUrl}', '${csrfToken}')"
-                                        class="text-red-600 hover:text-red-800"
-                                      >
-                                        Delete
-                                      </button>
-                                    </td>
-                                  </tr>
-                                `).join("");
+              <tr class="cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors" onclick="window.location.href='${seed.showUrl}'">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <a href="${seed.showUrl}" class="text-blue-600 hover:text-blue-800 font-medium" onclick="event.stopPropagation()">${seed.name}</a>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.createdAt}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${seed.statusClass}">${seed.status}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.cadence}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.lastRunAt || "Never"}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${seed.nextRunAt || "N/A"}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                  <a href="${seed.showUrl}" class="text-blue-600 hover:text-blue-800" onclick="event.stopPropagation()">View</a>
+                  <a href="${seed.editUrl}" class="text-green-600 hover:text-green-800" onclick="event.stopPropagation()">Edit</a>
+                  <button type="button" onclick="event.stopPropagation(); showDeleteDialog(${seed.proofCount}, '${seed.deleteUrl}', '${csrfToken}')" class="text-red-600 hover:text-red-800">Delete</button>
+                </td>
+              </tr>
+            `).join("");
+
             container.innerHTML = `
-                                  <div class="bg-white shadow rounded-lg overflow-hidden">
-                                    <table class="min-w-full divide-y divide-gray-200">
-                                      <thead class="bg-gray-50">
-                                        <tr>
-                                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cadence</th>
-                                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Run</th>
-                                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Run</th>
-                                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody class="bg-white divide-y divide-gray-200">${rows}</tbody>
-                                    </table>
-                                  </div>
-                                `;
+              <!-- Mobile cards -->
+              <div class="md:hidden space-y-4">${cards}</div>
+              <!-- Desktop table -->
+              <div class="hidden md:block bg-white shadow rounded-lg overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cadence</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Run</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Run</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">${rows}</tbody>
+                </table>
+              </div>
+            `;
           }
         </script>
       </div>

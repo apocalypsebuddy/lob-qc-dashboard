@@ -3,6 +3,8 @@ import { statSync } from 'node:fs'
 import { join, dirname, basename, extname } from 'node:path'
 import logger from '@adonisjs/core/services/logger'
 
+export const MAX_UPLOAD_SIZE_BYTES = 2 * 1024 * 1024 // 2MB
+
 export default class ImageResizeService {
   /**
    * Resize an image if it exceeds the maximum size limit
@@ -42,10 +44,11 @@ export default class ImageResizeService {
         return filePath
       }
 
-      // Validate format
-      const supportedFormats = ['jpeg', 'jpg', 'png']
+      // Validate format - sharp reports 'heif' for both heic and heif files
+      // Use lowercase comparison for case-insensitive matching
+      const supportedFormats = ['jpeg', 'jpg', 'png', 'heic', 'heif', 'webp']
       if (!format || !supportedFormats.includes(format.toLowerCase())) {
-        logger.warn('Unsupported image format', { filePath, format })
+        logger.warn({ filePath, format }, 'Unsupported image format')
         return filePath
       }
 
@@ -144,18 +147,13 @@ export default class ImageResizeService {
         // Return resized file anyway - it's smaller than original
       }
 
-      // Verify the resized file exists and get final size
-      const finalStats = statSync(resizedPath)
-      const finalSize = finalStats.size
-
       logger.info('Image resize completed', {
         originalPath: filePath,
         resizedPath,
         originalSize: currentSize,
-        resizedSize: finalSize,
+        resizedSize,
         originalDimensions: `${width}x${height}`,
         resizedDimensions: `${resizedWidth}x${resizedHeight}`,
-        sizeReduction: `${((1 - finalSize / currentSize) * 100).toFixed(1)}%`,
       })
 
       return resizedPath
