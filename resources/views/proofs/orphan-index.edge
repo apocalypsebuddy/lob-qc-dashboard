@@ -98,8 +98,9 @@
         <!-- Upload Form -->
         <div class="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
           <h2 class="text-xl font-semibold mb-4">Upload Orphan Proof</h2>
-          <form method="POST" action="{{ route('proofs.uploadOrphanProof') }}" enctype="multipart/form-data" class="space-y-4">
+          <form method="POST" action="{{ route('proofs.uploadOrphanProof') }}" enctype="multipart/form-data" class="space-y-4" id="uploadForm">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+            <input type="hidden" name="proof_type" value="orphan" />
             <div class="flex flex-col sm:flex-row sm:items-end gap-4">
               <div class="flex-1 w-full">
                 <label for="file" class="block text-sm font-medium text-gray-700 mb-2">
@@ -125,14 +126,14 @@
                     name="resource_id"
                     required
                     class="flex-1 sm:w-64 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter resource ID"
+                    placeholder="psc_1234567890"
                   />
                   <button
                     type="button"
                     id="detectResourceIdBtn"
                     class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium whitespace-nowrap"
                   >
-                    Detect Resource ID
+                    Detect Resource ID from image
                   </button>
                 </div>
               </div>
@@ -146,7 +147,7 @@
                 class="flex items-center justify-between w-full text-left text-sm font-medium text-gray-700 hover:text-gray-900 focus:outline-none"
                 onclick="toggleOptionalFields()"
               >
-                <span>Optional fields</span>
+                <span>Optional fields (click to expand)</span>
                 <svg
                   id="optionalFieldsIcon"
                   class="w-5 h-5 text-gray-500 transition-transform duration-200"
@@ -161,18 +162,7 @@
                 id="optionalFieldsContent"
                 class="hidden mt-4 space-y-4"
               >
-                <div>
-                  <label for="batch_id" class="block text-sm font-medium text-gray-700 mb-2">
-                    Batch ID <span class="text-gray-400 font-normal">(optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="batch_id"
-                    name="batch_id"
-                    class="w-full sm:max-w-md px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter batch ID"
-                  />
-                </div>
+
                 <div>
                   <label for="additional_file" class="block text-sm font-medium text-gray-700 mb-2">
                     Additional Proof Image <span class="text-gray-400 font-normal">(optional)</span>
@@ -185,8 +175,221 @@
                     class="block w-full sm:max-w-md text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
                   />
                   <p class="mt-1 text-xs text-gray-500">
-                    Upload the other side of the proof (without IMB barcode)
+                    Upload other side of the mailpiece (without IMB barcode)
                   </p>
+                </div>
+
+
+
+                <!-- Additional Optional Fields -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                  <div>
+                    <label for="created_by" class="block text-sm font-medium text-gray-700 mb-2">
+                      Created by <span class="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <input type="hidden" id="user-email-base64" value="{{ userEmailBase64 }}" />
+                    <input
+                      type="text"
+                      id="created_by"
+                      name="created_by"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                  <label for="batch_id" class="block text-sm font-medium text-gray-700 mb-2">
+                    Batch ID <span class="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="batch_id"
+                    name="batch_id"
+                    class="w-full sm:max-w-md px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter batch ID"
+                  />
+                </div>
+
+                  <div>
+                    <label for="receive_date" class="block text-sm font-medium text-gray-700 mb-2">
+                      Receive Date <span class="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <input
+                      type="date"
+                      id="receive_date"
+                      name="receive_date"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label for="delivery_quality" class="block text-sm font-medium text-gray-700 mb-2">
+                      Delivery Quality <span class="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <select
+                      id="delivery_quality"
+                      name="delivery_quality"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select quality...</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label for="delivery_date" class="block text-sm font-medium text-gray-700 mb-2">
+                      Delivery Time <span class="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <input
+                      type="date"
+                      id="delivery_date"
+                      name="delivery_date"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label for="mailpiece_count" class="block text-sm font-medium text-gray-700 mb-2">
+                      Mailpiece count <span class="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <select
+                      id="mailpiece_count"
+                      name="mailpiece_count"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select count...</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                      <option value="6">6</option>
+                      <option value="7">7</option>
+                      <option value="8">8</option>
+                      <option value="9">9</option>
+                      <option value="10">10</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label for="print_quality" class="block text-sm font-medium text-gray-700 mb-2">
+                      Print quality <span class="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <select
+                      id="print_quality"
+                      name="print_quality"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select quality...</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label for="print_quality_tags" class="block text-sm font-medium text-gray-700 mb-2">
+                      Print Quality Tags <span class="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <div class="flex gap-2">
+                      <select
+                        id="print_quality_tags_select"
+                        class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select or create tag...</option>
+                      </select>
+                      <input
+                        type="text"
+                        id="print_quality_tags_new"
+                        placeholder="Or create new tag"
+                        class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <input type="hidden" id="print_quality_tags" name="print_quality_tags" />
+                  </div>
+
+                  <div class="sm:col-span-2">
+                    <label for="product_size_select" class="block text-sm font-medium text-gray-700 mb-2">
+                      Product size <span class="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <select
+                      id="product_size_select"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select a size...</option>
+                      <option value="4x6">4x6</option>
+                      <option value="6x9">6x9</option>
+                      <option value="6x11">6x11</option>
+                      <option value="9x12">9x12</option>
+                      <option value="18x6">18x6</option>
+                      <option value="8.5x11">8.5x11</option>
+                      <option value="custom">Custom (type below)</option>
+                    </select>
+                    <input type="hidden" id="product_size" name="product_size" />
+                    <div id="product_size_custom_container" class="hidden mt-2">
+                      <label for="product_size_custom" class="block text-sm font-medium text-gray-700 mb-2">
+                        Custom Product Size <span class="text-gray-400 font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="product_size_custom"
+                        placeholder="Enter custom size"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label for="quality_ranking" class="block text-sm font-medium text-gray-700 mb-2">
+                      Quality Ranking <span class="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <select
+                      id="quality_ranking"
+                      name="quality_ranking"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select ranking...</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
+                      Status <span class="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <select
+                      id="status"
+                      name="status"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select status...</option>
+                      <option value="Not started">Not started</option>
+                      <option value="Received">Received</option>
+                      <option value="Done">Done</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label for="comments" class="block text-sm font-medium text-gray-700 mb-2">
+                    Comments <span class="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <textarea
+                    id="comments"
+                    name="comments"
+                    rows="3"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter any additional comments..."
+                  ></textarea>
                 </div>
               </div>
             </div>
@@ -238,6 +441,28 @@
         <script>
           const groupsBase64 = "{{ groupsBase64 }}";
           const csrfToken = "{{ csrfToken }}";
+
+          // Get user email from hidden input and decode from base64 to avoid Edge template escaping issues
+          const emailBase64Input = document.getElementById("user-email-base64");
+          const createdByInput = document.getElementById("created_by");
+          if (emailBase64Input && createdByInput) {
+            const userEmailBase64 = emailBase64Input.value;
+            console.log('Raw base64 from hidden input:', userEmailBase64);
+            console.log('Base64 length:', userEmailBase64?.length);
+            if (userEmailBase64) {
+              try {
+                const userEmail = atob(userEmailBase64);
+                console.log('Decoded user email:', userEmail);
+                console.log('Decoded email length:', userEmail.length);
+                createdByInput.value = userEmail;
+              } catch (e) {
+                console.error('Error decoding user email:', e, 'Base64:', userEmailBase64);
+              }
+            } else {
+              console.warn('No base64 value found in hidden input');
+            }
+          }
+
           console.log('Orphan - groupsBase64 length:', groupsBase64.length);
           console.log('Orphan - groupsBase64 first 50 chars:', groupsBase64.substring(0, 50));
           console.log('Orphan - groupsBase64 last 50 chars:', groupsBase64.substring(Math.max(0, groupsBase64.length - 50)));
@@ -390,6 +615,50 @@
               icon.classList.toggle("rotate-180");
             }
           }
+
+          // Handle product size custom field
+          document.getElementById("product_size_select")?.addEventListener("change", function() {
+            const customContainer = document.getElementById("product_size_custom_container");
+            const hiddenInput = document.getElementById("product_size");
+            if (this.value === "custom") {
+              customContainer?.classList.remove("hidden");
+              if (hiddenInput) hiddenInput.value = "";
+            } else {
+              customContainer?.classList.add("hidden");
+              const customInput = document.getElementById("product_size_custom");
+              if (customInput) customInput.value = "";
+              if (hiddenInput) hiddenInput.value = this.value;
+            }
+          });
+
+          // Update hidden product_size field when custom input changes
+          document.getElementById("product_size_custom")?.addEventListener("input", function() {
+            const hiddenInput = document.getElementById("product_size");
+            if (hiddenInput) hiddenInput.value = this.value.trim();
+          });
+
+          // Handle print quality tags - use new tag if provided, otherwise use selected tag
+          document.getElementById("print_quality_tags_new")?.addEventListener("input", function() {
+            const hiddenInput = document.getElementById("print_quality_tags");
+            const select = document.getElementById("print_quality_tags_select");
+            if (this.value.trim()) {
+              if (hiddenInput) hiddenInput.value = this.value.trim();
+              if (select) select.value = "";
+            } else {
+              if (hiddenInput) hiddenInput.value = select?.value || "";
+            }
+          });
+
+          document.getElementById("print_quality_tags_select")?.addEventListener("change", function() {
+            const newTagInput = document.getElementById("print_quality_tags_new");
+            const hiddenInput = document.getElementById("print_quality_tags");
+            if (this.value) {
+              if (newTagInput) newTagInput.value = "";
+              if (hiddenInput) hiddenInput.value = this.value;
+            } else {
+              if (hiddenInput) hiddenInput.value = newTagInput?.value.trim() || "";
+            }
+          });
         </script>
       </div>
     </main>

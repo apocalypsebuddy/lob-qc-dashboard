@@ -111,8 +111,14 @@ export default class ScanEventsService {
   /**
    * Upload a scan file to the scan events service
    * Accepts a file path and uploads it as multipart/form-data
+   * Additional optional fields can be passed as key-value pairs
    */
-  static async uploadScan(resourceId: string, filePath: string, batchId?: string): Promise<UploadScanResponse> {
+  static async uploadScan(
+    resourceId: string,
+    filePath: string,
+    batchId?: string,
+    additionalFields?: Record<string, string>
+  ): Promise<UploadScanResponse> {
     const formDataModule = await import('form-data')
     const FormData = formDataModule.default
     const formData = new FormData()
@@ -133,6 +139,16 @@ export default class ScanEventsService {
     if (batchId) {
       formData.append('batch_id', batchId)
     }
+
+    // Append additional optional fields if provided
+    if (additionalFields) {
+      for (const [key, value] of Object.entries(additionalFields)) {
+        if (value !== null && value !== undefined && value !== '') {
+          formData.append(key, value)
+        }
+      }
+    }
+
     formData.append('file', createReadStream(filePath), {
       filename: basename(filePath),
       contentType,

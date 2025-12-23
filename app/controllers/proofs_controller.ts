@@ -592,10 +592,17 @@ export default class ProofsController {
       const groupsJson = JSON.stringify(groupsWithUrls)
       const groupsBase64 = Buffer.from(groupsJson, 'utf-8').toString('base64')
 
+      // Encode user email as base64 to avoid HTML escaping issues
+      logger.info(`User email before encoding: "${user.email}" (length: ${user.email?.length})`)
+      const userEmailBase64 = Buffer.from(user.email || '', 'utf-8').toString('base64')
+      logger.info(`User email base64: ${userEmailBase64}`)
+
       return view.render('proofs/orphan-index', {
         groups: groupsWithUrls,
         groupsBase64,
         csrfToken,
+        userEmail: user.email,
+        userEmailBase64,
       })
     } catch (error: any) {
       logger.error('Error fetching orphan proofs', {
@@ -603,10 +610,19 @@ export default class ProofsController {
         error: error.message,
         stack: error.stack,
       })
+      // Encode user email as base64 to avoid HTML escaping issues
+      logger.info(
+        `User email before encoding (error case): "${user.email}" (length: ${user.email?.length})`
+      )
+      const userEmailBase64 = Buffer.from(user.email || '', 'utf-8').toString('base64')
+      logger.info(`User email base64 (error case): ${userEmailBase64}`)
+
       return view.render('proofs/orphan-index', {
         groups: [],
         groupsBase64: Buffer.from(JSON.stringify([]), 'utf-8').toString('base64'),
         csrfToken,
+        userEmail: user.email,
+        userEmailBase64,
         error: `Failed to load orphan proofs: ${error.message}`,
       })
     }
@@ -758,6 +774,29 @@ export default class ProofsController {
 
       const batchId = request.input('batch_id') as string | undefined
 
+      // Collect all optional fields
+      const optionalFields: Record<string, string> = {}
+      const optionalFieldNames = [
+        'created_by',
+        'receive_date',
+        'delivery_quality',
+        'delivery_date',
+        'mailpiece_count',
+        'print_quality',
+        'print_quality_tags',
+        'product_size',
+        'quality_ranking',
+        'status',
+        'comments',
+      ]
+
+      for (const fieldName of optionalFieldNames) {
+        const value = request.input(fieldName) as string | undefined
+        if (value !== null && value !== undefined && value !== '') {
+          optionalFields[fieldName] = value
+        }
+      }
+
       const file = request.file('file', {
         size: '50mb', // Allow larger files initially, will be resized to under 2MB
         extnames: [
@@ -821,8 +860,9 @@ export default class ProofsController {
         resourceId,
         filePath: filePathToUpload,
         batchId,
+        optionalFields,
       })
-      await ScanEventsService.uploadScan(resourceId, filePathToUpload, batchId)
+      await ScanEventsService.uploadScan(resourceId, filePathToUpload, batchId, optionalFields)
       logger.info('Scan uploaded successfully', { resourceId })
 
       // Clean up main file temp files
@@ -878,8 +918,14 @@ export default class ProofsController {
           resourceId,
           filePath: additionalFilePathToUpload,
           batchId,
+          optionalFields,
         })
-        await ScanEventsService.uploadScan(resourceId, additionalFilePathToUpload, batchId)
+        await ScanEventsService.uploadScan(
+          resourceId,
+          additionalFilePathToUpload,
+          batchId,
+          optionalFields
+        )
         logger.info('Additional scan uploaded successfully', { resourceId })
 
         // Clean up additional file temp files
