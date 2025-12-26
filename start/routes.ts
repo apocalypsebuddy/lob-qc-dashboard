@@ -44,6 +44,9 @@ router
       .get('/proofs/orphan/:resourceId', [ProofsController, 'showOrphanProof'])
       .as('proofs.showOrphanProof')
     router
+      .patch('/proofs/orphan/:resourceId', [ProofsController, 'updateOrphanProof'])
+      .as('proofs.updateOrphanProof')
+    router
       .post('/proofs/orphan/upload', [ProofsController, 'uploadOrphanProof'])
       .as('proofs.uploadOrphanProof')
     router
