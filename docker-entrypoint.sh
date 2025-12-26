@@ -34,7 +34,7 @@ wait_for_postgres
 # Set default values for database environment variables
 DB_USER=${DB_USER:-postgres}
 DB_PASSWORD=${DB_PASSWORD:-postgres}
-DB_DATABASE=${DB_DATABASE:-hackathon_pudding}
+DB_DATABASE=${DB_DATABASE:-lob_qc_dashboard}
 DB_HOST=${DB_HOST:-localhost}
 DB_PORT=${DB_PORT:-5432}
 

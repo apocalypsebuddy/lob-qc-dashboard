@@ -92,7 +92,7 @@ Lob webhooks are received at `/webhooks/lob` and update proof status automatical
 The application includes PostgreSQL in the same container for easy deployment:
 
 ```bash
-docker build -t hackathon-pudding .
+docker build -t lob-qc-dashboard .
 ```
 
 ### Running with Docker
@@ -101,8 +101,8 @@ docker build -t hackathon-pudding .
 docker run -p 3333:3333 \
   -e DB_PASSWORD=your_password \
   -e APP_KEY=your_app_key \
-  -e DB_DATABASE=hackathon_pudding \
-  hackathon-pudding
+  -e DB_DATABASE=lob_qc_dashboard \
+  lob-qc-dashboard
 ```
 
 The container will:
@@ -116,7 +116,7 @@ The container will:
 Required environment variables:
 - `DB_PASSWORD` - PostgreSQL password (default: `postgres`)
 - `APP_KEY` - AdonisJS encryption key (required)
-- `DB_DATABASE` - Database name (default: `hackathon_pudding`)
+- `DB_DATABASE` - Database name (default: `lob_qc_dashboard`)
 - `DB_USER` - PostgreSQL user (default: `postgres`)
 - `DB_HOST` - Database host (default: `localhost`)
 - `DB_PORT` - Database port (default: `5432`)
@@ -142,9 +142,9 @@ Optional:
 
 ### ECR Repository Setup
 
-1. Create an ECR repository named `hackathon-pudding`:
+1. Create an ECR repository named `lob-qc-dashboard`:
    ```bash
-   aws ecr create-repository --repository-name hackathon-pudding --region us-west-2
+   aws ecr create-repository --repository-name lob-qc-dashboard --region us-west-2
    ```
 
 2. Update the `ECR_REPOSITORY` and `AWS_REGION` in `.github/workflows/deploy.yml` if needed
@@ -165,7 +165,7 @@ Optional:
    - `DB_PORT=5432`
    - `DB_USER=postgres`
    - `DB_PASSWORD=<secure-password>`
-   - `DB_DATABASE=hackathon_pudding`
+   - `DB_DATABASE=lob_qc_dashboard`
    - `APP_KEY=<generate-with-node-ace-generate-key>`
    - `LOG_LEVEL=info`
    - `SESSION_DRIVER=cookie`

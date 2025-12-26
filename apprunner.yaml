@@ -5,7 +5,7 @@
 
 # Service Configuration:
 # - Source: ECR
-# - Image: <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/hackathon-pudding:latest
+# - Image: <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/lob-qc-dashboard:latest
 # - Port: 3333
 # - Auto-deploy: Enabled (deploys when new image is pushed to ECR)
 
@@ -17,7 +17,7 @@
 # DB_PORT=5432
 # DB_USER=postgres
 # DB_PASSWORD=<set-secure-password>
-# DB_DATABASE=hackathon_pudding
+# DB_DATABASE=lob_qc_dashboard
 # APP_KEY=<generate-with-node-ace-generate-key>
 # LOG_LEVEL=info
 # SESSION_DRIVER=cookie
