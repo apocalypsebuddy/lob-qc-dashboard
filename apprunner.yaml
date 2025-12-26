@@ -1,0 +1,32 @@
+# App Runner Configuration
+# Note: When using ECR as the source, App Runner configuration is typically done
+# through the AWS Console or Infrastructure as Code (CloudFormation/CDK).
+# This file serves as documentation for the required configuration.
+
+# Service Configuration:
+# - Source: ECR
+# - Image: <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/hackathon-pudding:latest
+# - Port: 3333
+# - Auto-deploy: Enabled (deploys when new image is pushed to ECR)
+
+# Environment Variables (configure in App Runner console):
+# NODE_ENV=production
+# HOST=0.0.0.0
+# PORT=3333
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_USER=postgres
+# DB_PASSWORD=<set-secure-password>
+# DB_DATABASE=hackathon_pudding
+# APP_KEY=<generate-with-node-ace-generate-key>
+# LOG_LEVEL=info
+# SESSION_DRIVER=cookie
+
+# Health Check:
+# - Path: / (or configure custom health check endpoint)
+# - Protocol: HTTP
+# - Interval: 10 seconds
+# - Timeout: 5 seconds
+# - Healthy threshold: 1
+# - Unhealthy threshold: 5
+

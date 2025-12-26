@@ -85,6 +85,110 @@ The live proof ingestion service endpoint is configured in `app/services/live_pr
 
 Lob webhooks are received at `/webhooks/lob` and update proof status automatically.
 
+## Docker
+
+### Building the Docker Image
+
+The application includes PostgreSQL in the same container for easy deployment:
+
+```bash
+docker build -t hackathon-pudding .
+```
+
+### Running with Docker
+
+```bash
+docker run -p 3333:3333 \
+  -e DB_PASSWORD=your_password \
+  -e APP_KEY=your_app_key \
+  -e DB_DATABASE=hackathon_pudding \
+  hackathon-pudding
+```
+
+The container will:
+1. Start PostgreSQL automatically
+2. Create the database if it doesn't exist
+3. Run migrations
+4. Start the AdonisJS server
+
+### Environment Variables for Docker
+
+Required environment variables:
+- `DB_PASSWORD` - PostgreSQL password (default: `postgres`)
+- `APP_KEY` - AdonisJS encryption key (required)
+- `DB_DATABASE` - Database name (default: `hackathon_pudding`)
+- `DB_USER` - PostgreSQL user (default: `postgres`)
+- `DB_HOST` - Database host (default: `localhost`)
+- `DB_PORT` - Database port (default: `5432`)
+- `PORT` - Application port (default: `3333`)
+- `HOST` - Application host (default: `0.0.0.0`)
+- `NODE_ENV` - Environment (default: `production`)
+
+Optional:
+- `LOG_LEVEL` - Logging level (default: `info`)
+- `SESSION_DRIVER` - Session driver (default: `cookie`)
+- `SCAN_EVENTS_API_URL` - Scan events API URL
+
+## AWS Deployment
+
+### Prerequisites
+
+1. AWS Account with ECR and App Runner access
+2. GitHub repository with Actions enabled
+3. AWS credentials configured as GitHub Secrets:
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+   - `AWS_REGION` (default: `us-west-2`)
+
+### ECR Repository Setup
+
+1. Create an ECR repository named `hackathon-pudding`:
+   ```bash
+   aws ecr create-repository --repository-name hackathon-pudding --region us-west-2
+   ```
+
+2. Update the `ECR_REPOSITORY` and `AWS_REGION` in `.github/workflows/deploy.yml` if needed
+
+### App Runner Service Setup
+
+1. Create an App Runner service in the AWS Console:
+   - Source: Amazon ECR
+   - Image: Select your ECR repository and `latest` tag
+   - Port: `3333`
+   - Auto-deploy: Enabled (automatically deploys when new images are pushed)
+
+2. Configure environment variables in App Runner:
+   - `NODE_ENV=production`
+   - `HOST=0.0.0.0`
+   - `PORT=3333`
+   - `DB_HOST=localhost`
+   - `DB_PORT=5432`
+   - `DB_USER=postgres`
+   - `DB_PASSWORD=<secure-password>`
+   - `DB_DATABASE=hackathon_pudding`
+   - `APP_KEY=<generate-with-node-ace-generate-key>`
+   - `LOG_LEVEL=info`
+   - `SESSION_DRIVER=cookie`
+
+3. Configure health check:
+   - Path: `/` (or your health check endpoint)
+   - Protocol: HTTP
+   - Interval: 10 seconds
+   - Timeout: 5 seconds
+
+### CI/CD Pipeline
+
+The GitHub Actions workflow (`.github/workflows/deploy.yml`) automatically:
+- Builds the Docker image on push to `main` branch
+- Tags the image with the commit SHA and `latest`
+- Pushes to ECR
+- App Runner automatically deploys the new image (if auto-deploy is enabled)
+
+To trigger a deployment, simply push to the `main` branch:
+```bash
+git push origin main
+```
+
 ## Development
 
 - Run migrations: `node ace migration:run`
