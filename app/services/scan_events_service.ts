@@ -66,17 +66,28 @@ interface UploadScanResponse {
 export default class ScanEventsService {
   /**
    * Get all scan events (groups)
+   * @param scanType Optional scan type to filter by (e.g., 'orphan')
    */
-  static async getScanEvents(): Promise<GetScanEventsResponse> {
+  static async getScanEvents(scanType?: string): Promise<GetScanEventsResponse> {
     const fetchModule = await import('node-fetch')
     const fetch = fetchModule.default
-    const response = await fetch(SCAN_EVENTS_API_URL)
+
+    // Build URL with optional scan_type query parameter
+    let url = SCAN_EVENTS_API_URL
+    if (scanType) {
+      const urlObj = new URL(SCAN_EVENTS_API_URL)
+      urlObj.searchParams.set('scan_type', scanType)
+      url = urlObj.toString()
+    }
+
+    const response = await fetch(url)
 
     if (!response.ok) {
       const errorText = await response.text()
       logger.error('Failed to fetch scan events', {
         status: response.status,
         error: errorText,
+        scanType,
       })
       throw new Error(`Scan events API error: ${response.status} - ${errorText}`)
     }

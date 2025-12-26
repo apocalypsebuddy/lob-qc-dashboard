@@ -574,7 +574,7 @@ export default class ProofsController {
     const csrfToken = request.csrfToken
 
     try {
-      const scanEvents = await ScanEventsService.getScanEvents()
+      const scanEvents = await ScanEventsService.getScanEvents('orphan')
       const groups = scanEvents.groups || []
       logger.info(
         `Fetched scan events for orphan proofs - groups count: ${groups.length}, total resources: ${scanEvents.summary?.total_resources || 0}`
@@ -856,13 +856,18 @@ export default class ProofsController {
       })
 
       // Upload main file to scan events service
+      // Add scan_type for orphan proofs
+      const additionalFields = {
+        ...optionalFields,
+        scan_type: 'orphan',
+      }
       logger.info('Uploading scan to scan events service', {
         resourceId,
         filePath: filePathToUpload,
         batchId,
-        optionalFields,
+        optionalFields: additionalFields,
       })
-      await ScanEventsService.uploadScan(resourceId, filePathToUpload, batchId, optionalFields)
+      await ScanEventsService.uploadScan(resourceId, filePathToUpload, batchId, additionalFields)
       logger.info('Scan uploaded successfully', { resourceId })
 
       // Clean up main file temp files
@@ -918,13 +923,13 @@ export default class ProofsController {
           resourceId,
           filePath: additionalFilePathToUpload,
           batchId,
-          optionalFields,
+          optionalFields: additionalFields,
         })
         await ScanEventsService.uploadScan(
           resourceId,
           additionalFilePathToUpload,
           batchId,
-          optionalFields
+          additionalFields
         )
         logger.info('Additional scan uploaded successfully', { resourceId })
 
