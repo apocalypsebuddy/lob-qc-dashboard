@@ -62,58 +62,111 @@
         <!-- Proof Details -->
         <div id="proof-details">
         </div>
+        
+        <!-- Optional Fields Section -->
+        <div id="optional-fields-section" class="mt-8 hidden">
+        </div>
+
         <script>
           const dataBase64 = "{{ dataBase64 }}";
           const csrfToken = "{{ csrfToken }}";
+          const resourceId = "{{ resourceId }}";
           const data = JSON.parse(atob(dataBase64));
           const container = document.getElementById("proof-details");
+          const optionalFieldsContainer = document.getElementById("optional-fields-section");
 
+          // Helper function to format file size
+          function formatFileSize(bytes) {
+            if (!bytes || bytes === 0) return '-';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+          }
+
+          // Helper function to format date
+          function formatDate(dateStr) {
+            if (!dateStr || dateStr === '-') return '-';
+            try {
+              return new Date(dateStr).toLocaleString();
+            } catch (e) {
+              return dateStr;
+            }
+          }
+
+          // Extract field value from items (prefer latest scan)
+          function getFieldValue(fieldName) {
+            if (!data.items || data.items.length === 0) return null;
+            
+            // Try latest scan first
+            const latest = data.items[0];
+            if (latest[fieldName] !== undefined && latest[fieldName] !== null && latest[fieldName] !== '') {
+              return latest[fieldName];
+            }
+            
+            // Try alternative field names
+            const fieldMappings = {
+              'created_by': ['created_by', 'uploaded_by'],
+              'uploaded_by': ['uploaded_by', 'created_by'],
+              'delivery_time': ['delivery_time', 'delivery_date'],
+              'delivery_date': ['delivery_date', 'delivery_time'],
+              'comments': ['comments', 'description', 'delivery_quality_comments'],
+              'description': ['description', 'comments', 'delivery_quality_comments'],
+            };
+            
+            if (fieldMappings[fieldName]) {
+              for (const altField of fieldMappings[fieldName]) {
+                if (latest[altField] !== undefined && latest[altField] !== null && latest[altField] !== '') {
+                  return latest[altField];
+                }
+              }
+            }
+            
+            // Search through all items
+            for (const item of data.items) {
+              if (item[fieldName] !== undefined && item[fieldName] !== null && item[fieldName] !== '') {
+                return item[fieldName];
+              }
+            }
+            
+            return null;
+          }
+
+          // Render scan images section
           if (!data.items || data.items.length === 0) {
             container.innerHTML = '<div class="bg-white shadow rounded-lg p-8 text-center"><p class="text-gray-500">No scans found for this resource.</p></div>';
           } else {
-            // Display all properties dynamically
             const itemsHtml = data.items.map((item, index) => {
               const imageUrl = item.url || item.s3_uri || null;
               const imageHtml = imageUrl
                 ? `<img src="${imageUrl}" alt="Scan ${index + 1}" class="w-full h-auto rounded-lg border border-gray-200 shadow-sm" />`
                 : '<div class="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">No image available</div>';
 
-              // Get all properties except url/s3_uri (already displayed as image)
-              const properties = Object.keys(item)
-                .filter(key => key !== 'url' && key !== 's3_uri' && key !== 's3_key')
-                .map(key => {
-                  let value = item[key];
-                  if (value === null || value === undefined) {
-                    value = '-';
-                  } else if (typeof value === 'object') {
-                    value = JSON.stringify(value);
-                  } else if (typeof value === 'string' && value.length > 100) {
-                    value = value.substring(0, 100) + '...';
-                  }
-                  return `
-                    <tr class="border-b border-gray-100">
-                      <td class="px-4 py-2 text-sm font-medium text-gray-700">${key}</td>
-                      <td class="px-4 py-2 text-sm text-gray-900 font-mono">${value}</td>
-                    </tr>
-                  `;
-                }).join('');
-
+              const originalFilename = item.original_filename || '-';
               const timestamp = item.timestamp || item.created_at || item.updated_at || '-';
-              const formattedDate = timestamp !== '-' ? new Date(timestamp).toLocaleString() : '-';
+              const formattedDate = formatDate(timestamp);
+              const fileSize = item.file_size ? formatFileSize(item.file_size) : '-';
 
               return `
                 <div class="bg-white shadow rounded-lg p-6 mb-6">
-                  <h3 class="text-lg font-semibold mb-4">Scan ${index + 1} - ${formattedDate}</h3>
+                  <h3 class="text-lg font-semibold mb-4">Scan ${index + 1}</h3>
                   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div>
                       ${imageHtml}
                     </div>
-                    <div>
-                      <table class="min-w-full">
-                        <tbody>
-                          ${properties}
-                        </tbody>
-                      </table>
+                    <div class="space-y-3">
+                      <div>
+                        <span class="text-sm font-medium text-gray-700">Original Filename:</span>
+                        <p class="text-sm text-gray-900 font-mono mt-1">${originalFilename}</p>
+                      </div>
+                      <div>
+                        <span class="text-sm font-medium text-gray-700">Timestamp:</span>
+                        <p class="text-sm text-gray-900 mt-1">${formattedDate}</p>
+                      </div>
+                      <div>
+                        <span class="text-sm font-medium text-gray-700">File Size:</span>
+                        <p class="text-sm text-gray-900 mt-1">${fileSize}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -130,6 +183,231 @@
               ${itemsHtml}
             `;
           }
+
+          // Render optional fields section
+          const optionalFields = [
+            { key: 'printer_name', label: 'Printer Name', type: 'text' },
+            { key: 'batch_id', label: 'Batch ID', type: 'text' },
+            { key: 'batch_date', label: 'Batch Date', type: 'date' },
+            { key: 'work_order_number', label: 'Work Order Number', type: 'text' },
+            { key: 'receive_date', label: 'Receive Date', type: 'date' },
+            { key: 'product_size', label: 'Product Size', type: 'select', options: ['4x6', '6x9', '6x11', '9x12', '18x6', '8.5x11'] },
+            { key: 'print_quality', label: 'Print Quality', type: 'select', options: ['1', '2', '3', '4', '5'] },
+            { key: 'delivery_quality', label: 'Delivery Quality', type: 'select', options: ['1', '2', '3', '4', '5'] },
+            { key: 'delivery_date', label: 'Delivery Date', type: 'date' },
+            { key: 'created_by', label: 'Created By', type: 'text' },
+            { key: 'description', label: 'Description', type: 'textarea' },
+            { key: 'comments', label: 'Comments', type: 'textarea' },
+            { key: 'mailpiece_count', label: 'Mailpiece Count', type: 'number' },
+            { key: 'print_quality_tags', label: 'Print Quality Tags', type: 'text' },
+            { key: 'quality_ranking', label: 'Quality Ranking', type: 'select', options: ['1', '2', '3', '4', '5'] },
+            { key: 'status', label: 'Status', type: 'select', options: ['uploaded', 'not started', 'received', 'done'] },
+          ];
+
+          function renderOptionalFields() {
+            const fieldsHtml = optionalFields.map(field => {
+              let value = getFieldValue(field.key);
+              
+              // Handle date fields
+              if (field.type === 'date' && value) {
+                try {
+                  const date = new Date(value);
+                  value = date.toISOString().split('T')[0];
+                } catch (e) {
+                  value = value;
+                }
+              } else if (field.type === 'datetime-local' && value) {
+                try {
+                  const date = new Date(value);
+                  // Format as datetime-local (YYYY-MM-DDTHH:mm)
+                  const year = date.getFullYear();
+                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                  const day = String(date.getDate()).padStart(2, '0');
+                  const hours = String(date.getHours()).padStart(2, '0');
+                  const minutes = String(date.getMinutes()).padStart(2, '0');
+                  value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                } catch (e) {
+                  value = value;
+                }
+              } else if (value === null || value === undefined) {
+                value = '';
+              } else if (Array.isArray(value)) {
+                value = value.join(', ');
+              } else {
+                value = String(value);
+                // For select fields, ensure value matches one of the options (except product_size which can have custom values)
+                if (field.type === 'select' && field.key !== 'product_size' && field.options && !field.options.includes(value)) {
+                  value = '';
+                }
+              }
+
+              const fieldId = `field-${field.key}`;
+              let inputHtml = '';
+              
+              if (field.type === 'textarea') {
+                inputHtml = `<textarea id="${fieldId}" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" rows="3">${value || ''}</textarea>`;
+              } else if (field.type === 'select') {
+                // For product_size, add current value to options if it's not already there (for custom sizes)
+                let optionsToUse = field.options || [];
+                if (field.key === 'product_size' && value && value !== '' && !optionsToUse.includes(value)) {
+                  optionsToUse = [...optionsToUse, value];
+                }
+                
+                const optionsHtml = optionsToUse.map(opt => {
+                  // Case-insensitive matching for status field
+                  const isSelected = field.key === 'status' 
+                    ? value && value.toLowerCase() === opt.toLowerCase()
+                    : value === opt;
+                  const selected = isSelected ? 'selected' : '';
+                  // Capitalize first letter of each word for display (except for product_size which should show as-is)
+                  const displayText = field.key === 'product_size' 
+                    ? opt 
+                    : opt.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                  return `<option value="${opt}" ${selected}>${displayText}</option>`;
+                }).join('');
+                inputHtml = `<select id="${fieldId}" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                  <option value="">Select...</option>
+                  ${optionsHtml}
+                </select>`;
+              } else {
+                inputHtml = `<input type="${field.type}" id="${fieldId}" value="${value || ''}" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />`;
+              }
+
+              return `
+                <div>
+                  <label for="${fieldId}" class="block text-sm font-medium text-gray-700 mb-1">
+                    ${field.label}
+                  </label>
+                  ${inputHtml}
+                </div>
+              `;
+            }).join('');
+
+            optionalFieldsContainer.innerHTML = `
+              <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Optional Fields</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  ${fieldsHtml}
+                </div>
+                <div class="flex justify-end gap-3">
+                  <button id="save-fields-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">
+                    Save Changes
+                  </button>
+                </div>
+                <div id="save-message" class="mt-4 hidden"></div>
+              </div>
+            `;
+            
+            optionalFieldsContainer.classList.remove('hidden');
+            
+            // Add save handler
+            document.getElementById('save-fields-btn')?.addEventListener('click', async () => {
+              const updates = {};
+              
+              optionalFields.forEach(field => {
+                const fieldId = `field-${field.key}`;
+                const input = document.getElementById(fieldId);
+                if (input) {
+                  let value = input.value.trim();
+                  
+                  if (value === '') {
+                    return; // Skip empty fields
+                  }
+                  
+                  // Convert number fields
+                  if (field.type === 'number') {
+                    const num = parseInt(value);
+                    if (!isNaN(num)) {
+                      value = num;
+                    } else {
+                      return; // Skip invalid numbers
+                    }
+                  }
+                  
+                  // Handle select fields - skip if empty option selected
+                  if (field.type === 'select' && value === '') {
+                    return; // Skip empty selects
+                  }
+                  
+                  // Map field names for API
+                  if (field.key === 'created_by') {
+                    updates.uploaded_by = value;
+                  } else if (field.key === 'delivery_date') {
+                    updates.delivery_time = value;
+                  } else if (field.key === 'comments') {
+                    updates.description = value;
+                  } else {
+                    updates[field.key] = value;
+                  }
+                }
+              });
+              
+              if (Object.keys(updates).length === 0) {
+                showMessage('No changes to save', 'warning');
+                return;
+              }
+              
+              // Disable save button
+              const saveBtn = document.getElementById('save-fields-btn');
+              if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+              }
+              
+              try {
+                const response = await fetch(`/proofs/orphan/${resourceId}`, {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                  },
+                  body: JSON.stringify(updates),
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                  showMessage('Fields updated successfully!', 'success');
+                  // Reload page after a short delay to show updated values
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 1500);
+                } else {
+                  showMessage(result.error || 'Failed to update fields', 'error');
+                }
+              } catch (error) {
+                showMessage('Error updating fields: ' + error.message, 'error');
+              } finally {
+                if (saveBtn) {
+                  saveBtn.disabled = false;
+                  saveBtn.textContent = 'Save Changes';
+                }
+              }
+            });
+          }
+          
+          function showMessage(message, type) {
+            const messageDiv = document.getElementById('save-message');
+            if (!messageDiv) return;
+            
+            const colors = {
+              success: 'bg-green-50 border-green-200 text-green-700',
+              error: 'bg-red-50 border-red-200 text-red-700',
+              warning: 'bg-yellow-50 border-yellow-200 text-yellow-700',
+            };
+            
+            messageDiv.className = `mt-4 px-4 py-3 rounded border ${colors[type] || colors.success}`;
+            messageDiv.textContent = message;
+            messageDiv.classList.remove('hidden');
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+              messageDiv.classList.add('hidden');
+            }, 5000);
+          }
+          
+          // Render optional fields section
+          renderOptionalFields();
         </script>
       </div>
     </main>

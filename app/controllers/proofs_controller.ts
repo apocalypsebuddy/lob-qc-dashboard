@@ -716,6 +716,109 @@ export default class ProofsController {
     }
   }
 
+  async updateOrphanProof({ params, request, response, auth }: HttpContext) {
+    try {
+      const user = auth.getUserOrFail()
+      const resourceId = params.resourceId
+
+      logger.info({ userId: user.id, resourceId }, 'Updating orphan proof')
+
+      // Get updates from request body (for JSON requests)
+      const updates: Record<string, any> = {}
+      let body: Record<string, any> = {}
+      
+      try {
+        body = request.body() || {}
+      } catch (e) {
+        // If body parsing fails, try to get from input
+        body = {}
+      }
+
+      // List of allowed optional fields
+      const allowedFields = [
+        'scan_type',
+        'page_number',
+        'printer_id',
+        'printer_name',
+        'account_id',
+        'account_name',
+        'batch_id',
+        'batch_date',
+        'work_order_number',
+        'receive_date',
+        'product_size',
+        'print_quality',
+        'delivery_quality',
+        'delivery_time',
+        'delivery_date',
+        'uploaded_by',
+        'created_by',
+        'description',
+        'comments',
+        'mailpiece_count',
+        'print_quality_tags',
+        'quality_ranking',
+        'status',
+      ]
+
+      // Extract allowed fields from request body
+      for (const field of allowedFields) {
+        const value = body[field] ?? request.input(field)
+        if (value !== undefined && value !== null && value !== '') {
+          // Handle field mapping
+          if (field === 'created_by') {
+            updates.uploaded_by = value
+          } else if (field === 'delivery_date') {
+            updates.delivery_time = value
+          } else if (field === 'comments') {
+            updates.description = value
+          } else {
+            updates[field] = value
+          }
+        }
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return response.status(400).json({ error: 'No valid fields to update' })
+      }
+
+      logger.info({
+        resourceId,
+        updates,
+        updateKeys: Object.keys(updates),
+      }, 'Calling scan events service with updates')
+
+      // Update scan events
+      await ScanEventsService.updateScanEventByResourceId(resourceId, updates)
+
+      logger.info({
+        userId: user.id,
+        resourceId,
+        updatedFields: Object.keys(updates),
+      }, 'Orphan proof updated successfully')
+
+      return response.json({
+        success: true,
+        message: 'Proof updated successfully',
+        resourceId,
+        updatedFields: Object.keys(updates),
+      })
+    } catch (error: any) {
+      logger.error({
+        userId: auth.user?.id,
+        resourceId: params.resourceId,
+        error: error.message,
+        stack: error.stack,
+        errorName: error.name,
+        errorCode: error.code,
+      }, 'Error updating orphan proof')
+      return response.status(500).json({
+        error: 'Failed to update proof',
+        message: error.message,
+      })
+    }
+  }
+
   async showFactoryProof({ params, view, auth, request }: HttpContext) {
     const user = auth.getUserOrFail()
     const csrfToken = request.csrfToken

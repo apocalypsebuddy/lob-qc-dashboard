@@ -196,4 +196,55 @@ export default class ScanEventsService {
     logger.warn('Resource ID detection not yet implemented', { filePath })
     throw new Error('Resource ID detection is not yet implemented')
   }
+
+  /**
+   * Update scan events for a specific resource ID
+   * Updates all items with the given resource_id
+   */
+  static async updateScanEventByResourceId(
+    resourceId: string,
+    updates: Record<string, any>
+  ): Promise<{ resource_id: string; updated_count: number; items: any[] }> {
+    const fetchModule = await import('node-fetch')
+    const fetch = fetchModule.default
+    const url = `${SCAN_EVENTS_API_URL}/${resourceId}`
+
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      logger.error(
+        {
+          resourceId,
+          status: response.status,
+          error: errorText,
+          updates: JSON.stringify(updates),
+          url,
+        },
+        'Failed to update scan event by resource ID'
+      )
+
+      // Provide helpful error message for 403 (Missing Authentication Token = route not configured)
+      if (response.status === 403 && errorText.includes('Missing Authentication Token')) {
+        throw new Error(
+          `API Gateway route not configured. Please add PATCH method for /scan-events/{resource_id} in API Gateway, routing to scan-events-management-lambda. ` +
+            `Current error: ${response.status} - ${errorText}`
+        )
+      }
+
+      throw new Error(`Scan events API error: ${response.status} - ${errorText}`)
+    }
+
+    return response.json() as Promise<{
+      resource_id: string
+      updated_count: number
+      items: any[]
+    }>
+  }
 }
