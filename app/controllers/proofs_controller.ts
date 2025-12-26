@@ -726,7 +726,7 @@ export default class ProofsController {
       // Get updates from request body (for JSON requests)
       const updates: Record<string, any> = {}
       let body: Record<string, any> = {}
-      
+
       try {
         body = request.body() || {}
       } catch (e) {
@@ -770,9 +770,8 @@ export default class ProofsController {
             updates.uploaded_by = value
           } else if (field === 'delivery_date') {
             updates.delivery_time = value
-          } else if (field === 'comments') {
-            updates.description = value
           } else {
+            // Store comments and description as separate fields (don't map comments to description)
             updates[field] = value
           }
         }
@@ -782,20 +781,26 @@ export default class ProofsController {
         return response.status(400).json({ error: 'No valid fields to update' })
       }
 
-      logger.info({
-        resourceId,
-        updates,
-        updateKeys: Object.keys(updates),
-      }, 'Calling scan events service with updates')
+      logger.info(
+        {
+          resourceId,
+          updates,
+          updateKeys: Object.keys(updates),
+        },
+        'Calling scan events service with updates'
+      )
 
       // Update scan events
       await ScanEventsService.updateScanEventByResourceId(resourceId, updates)
 
-      logger.info({
-        userId: user.id,
-        resourceId,
-        updatedFields: Object.keys(updates),
-      }, 'Orphan proof updated successfully')
+      logger.info(
+        {
+          userId: user.id,
+          resourceId,
+          updatedFields: Object.keys(updates),
+        },
+        'Orphan proof updated successfully'
+      )
 
       return response.json({
         success: true,
@@ -804,14 +809,17 @@ export default class ProofsController {
         updatedFields: Object.keys(updates),
       })
     } catch (error: any) {
-      logger.error({
-        userId: auth.user?.id,
-        resourceId: params.resourceId,
-        error: error.message,
-        stack: error.stack,
-        errorName: error.name,
-        errorCode: error.code,
-      }, 'Error updating orphan proof')
+      logger.error(
+        {
+          userId: auth.user?.id,
+          resourceId: params.resourceId,
+          error: error.message,
+          stack: error.stack,
+          errorName: error.name,
+          errorCode: error.code,
+        },
+        'Error updating orphan proof'
+      )
       return response.status(500).json({
         error: 'Failed to update proof',
         message: error.message,

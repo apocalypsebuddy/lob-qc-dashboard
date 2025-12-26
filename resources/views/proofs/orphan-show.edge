@@ -104,14 +104,12 @@
               return latest[fieldName];
             }
             
-            // Try alternative field names
+            // Try alternative field names (only for true aliases, not comments/description which are separate)
             const fieldMappings = {
               'created_by': ['created_by', 'uploaded_by'],
               'uploaded_by': ['uploaded_by', 'created_by'],
               'delivery_time': ['delivery_time', 'delivery_date'],
               'delivery_date': ['delivery_date', 'delivery_time'],
-              'comments': ['comments', 'description', 'delivery_quality_comments'],
-              'description': ['description', 'comments', 'delivery_quality_comments'],
             };
             
             if (fieldMappings[fieldName]) {
@@ -334,9 +332,8 @@
                     updates.uploaded_by = value;
                   } else if (field.key === 'delivery_date') {
                     updates.delivery_time = value;
-                  } else if (field.key === 'comments') {
-                    updates.description = value;
                   } else {
+                    // Store comments and description as separate fields (don't map comments to description)
                     updates[field.key] = value;
                   }
                 }
