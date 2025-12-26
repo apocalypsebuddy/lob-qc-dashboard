@@ -1,6 +1,16 @@
 #!/bin/bash
+# Enable verbose output and ensure errors are visible
+set -x
 # Don't exit on error - we'll handle errors explicitly
 set +e
+
+# Redirect all output to stdout/stderr so App Runner can see it
+exec 1>&1
+exec 2>&2
+
+echo "=========================================="
+echo "Starting docker-entrypoint.sh"
+echo "=========================================="
 
 # Function to wait for PostgreSQL to be ready
 wait_for_postgres() {
@@ -36,20 +46,35 @@ fi
 
 # Start PostgreSQL in the background
 echo "Starting PostgreSQL..."
-sudo -u postgres "$PG_BIN/postgres" -D "$PG_DATA" > /var/log/postgresql.log 2>&1 &
+echo "PG_BIN: $PG_BIN"
+echo "PG_DATA: $PG_DATA"
+ls -la "$PG_BIN/postgres" || echo "ERROR: postgres binary not found at $PG_BIN/postgres"
+
+# Start PostgreSQL and capture both stdout and stderr
+sudo -u postgres "$PG_BIN/postgres" -D "$PG_DATA" >> /var/log/postgresql.log 2>&1 &
 PG_PID=$!
 echo "PostgreSQL started with PID: $PG_PID"
+echo "Waiting a moment for PostgreSQL to initialize..."
+sleep 3
 
-# Give PostgreSQL a moment to start
-sleep 2
+# Check if PostgreSQL process is still running
+if ! kill -0 $PG_PID 2>/dev/null; then
+    echo "ERROR: PostgreSQL process died immediately!"
+    echo "PostgreSQL log:"
+    cat /var/log/postgresql.log || true
+    exit 1
+fi
 
 # Wait for PostgreSQL to be ready
 wait_for_postgres
+WAIT_EXIT=$?
 
-if [ $? -ne 0 ]; then
+if [ $WAIT_EXIT -ne 0 ]; then
     echo "ERROR: PostgreSQL failed to start!"
     echo "PostgreSQL log:"
-    tail -50 /var/log/postgresql.log || true
+    cat /var/log/postgresql.log || true
+    echo "Checking if process is still running:"
+    ps aux | grep postgres || true
     exit 1
 fi
 
@@ -99,7 +124,35 @@ fi
 trap "kill $PG_PID 2>/dev/null || true" EXIT
 
 # Start the application
+echo "=========================================="
 echo "Starting AdonisJS application..."
 echo "PostgreSQL PID: $PG_PID"
-exec "$@"
+echo "Command: $@"
+echo "Working directory: $(pwd)"
+echo "Environment variables:"
+echo "  DB_HOST=$DB_HOST"
+echo "  DB_PORT=$DB_PORT"
+echo "  DB_USER=$DB_USER"
+echo "  DB_DATABASE=$DB_DATABASE"
+echo "  NODE_ENV=${NODE_ENV:-not set}"
+echo "  PORT=${PORT:-not set}"
+echo "=========================================="
+
+# Verify PostgreSQL is still running before starting app
+if ! kill -0 $PG_PID 2>/dev/null; then
+    echo "ERROR: PostgreSQL process died before starting app!"
+    exit 1
+fi
+
+# Check if the command exists
+if [ "$1" = "npm" ] && [ "$2" = "start" ]; then
+    echo "Checking npm and package.json..."
+    which npm || echo "ERROR: npm not found"
+    ls -la package.json || echo "ERROR: package.json not found"
+    echo "Running: npm start"
+fi
+
+# Start the application (this replaces the shell process)
+# Use exec to replace shell, but ensure we can see errors
+exec "$@" 2>&1
 
