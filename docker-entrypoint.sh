@@ -136,6 +136,10 @@ echo "  DB_USER=$DB_USER"
 echo "  DB_DATABASE=$DB_DATABASE"
 echo "  NODE_ENV=${NODE_ENV:-not set}"
 echo "  PORT=${PORT:-not set}"
+echo "  HOST=${HOST:-not set}"
+echo ""
+echo "IMPORTANT: App Runner sets PORT automatically."
+echo "Make sure App Runner port configuration matches PORT env var."
 echo "=========================================="
 
 # Verify PostgreSQL is still running before starting app

@@ -32,8 +32,8 @@ RUN npm run build -- --ignore-ts-errors
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Expose port
-EXPOSE 3333
+# Expose port (App Runner will set PORT env var, default is 8080)
+EXPOSE 8080
 
 # Set entrypoint
 ENTRYPOINT ["docker-entrypoint.sh"]
