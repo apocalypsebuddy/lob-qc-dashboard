@@ -8,26 +8,23 @@ export default class AuthController {
     const errors = session.flashMessages.get('errors')
     const success = session.flashMessages.get('success')
 
-    // Format messages as HTML strings
-    let errorHtml = ''
+    // Extract message text (not HTML)
+    let errorMessage = ''
     if (errors) {
-      const errorText = typeof errors === 'object' ? Object.values(errors)[0] || '' : errors
-      if (errorText) {
-        errorHtml = `<div class="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded"><p>${errorText}</p></div>`
-      }
+      errorMessage = typeof errors === 'object' ? Object.values(errors)[0] || '' : errors
     }
 
-    let successHtml = ''
+    let successMessage = ''
     if (success) {
-      successHtml = `<div class="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded"><p>${success}</p></div>`
+      successMessage = success
     }
 
     // Get CSRF token
     const csrfToken = request.csrfToken
 
     return view.render('auth/register', {
-      errorMessage: errorHtml,
-      successMessage: successHtml,
+      errorMessage,
+      successMessage,
       csrfToken,
     })
   }
@@ -80,26 +77,23 @@ export default class AuthController {
     const errors = session.flashMessages.get('errors')
     const success = session.flashMessages.get('success')
 
-    // Format messages as HTML strings
-    let errorHtml = ''
+    // Extract message text (not HTML)
+    let errorMessage = ''
     if (errors) {
-      const errorText = typeof errors === 'object' ? Object.values(errors)[0] || '' : errors
-      if (errorText) {
-        errorHtml = `<div class="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded"><p>${errorText}</p></div>`
-      }
+      errorMessage = typeof errors === 'object' ? Object.values(errors)[0] || '' : errors
     }
 
-    let successHtml = ''
+    let successMessage = ''
     if (success) {
-      successHtml = `<div class="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded"><p>${success}</p></div>`
+      successMessage = success
     }
 
     // Get CSRF token
     const csrfToken = request.csrfToken
 
     return view.render('auth/login', {
-      errorMessage: errorHtml,
-      successMessage: successHtml,
+      errorMessage,
+      successMessage,
       csrfToken,
     })
   }
