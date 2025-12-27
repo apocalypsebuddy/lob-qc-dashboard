@@ -35,8 +35,8 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # Expose port (App Runner will set PORT env var, default is 8080)
 EXPOSE 8080
 
-# Set entrypoint
-ENTRYPOINT ["docker-entrypoint.sh"]
+# Set entrypoint (use explicit bash to ensure script runs)
+ENTRYPOINT ["/bin/bash", "/usr/local/bin/docker-entrypoint.sh"]
 
 # Default command
 CMD ["npm", "start"]

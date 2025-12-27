@@ -1,16 +1,17 @@
 #!/bin/bash
-# Enable verbose output and ensure errors are visible
+# CRITICAL: These first lines MUST appear in App Runner logs
+# If you don't see these, the script isn't running at all
+echo "ENTRYPOINT SCRIPT STARTED" 1>&2
+echo "Timestamp: $(date)" 1>&2
+echo "Working directory: $(pwd)" 1>&2
+echo "User: $(whoami)" 1>&2
+echo "Script location: $0" 1>&2
+echo "Arguments: $@" 1>&2
+
+# Enable verbose output
 set -x
 # Don't exit on error - we'll handle errors explicitly
 set +e
-
-# Redirect all output to stdout/stderr so App Runner can see it
-exec 1>&1
-exec 2>&2
-
-echo "=========================================="
-echo "Starting docker-entrypoint.sh"
-echo "=========================================="
 
 # Function to wait for PostgreSQL to be ready
 wait_for_postgres() {
@@ -91,8 +92,16 @@ sudo -u postgres psql -c "CREATE DATABASE $DB_DATABASE;" || echo "Database alrea
 
 # Set PostgreSQL password if provided
 if [ -n "$DB_PASSWORD" ]; then
-    echo "Setting PostgreSQL password..."
-    sudo -u postgres psql -c "ALTER USER $DB_USER WITH PASSWORD '$DB_PASSWORD';" || true
+    echo "Setting PostgreSQL password for user: $DB_USER"
+    # Check if user exists, create if not, then set password
+    sudo -u postgres psql -c "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -q 1 || \
+        sudo -u postgres psql -c "CREATE USER \"$DB_USER\" WITH PASSWORD '$DB_PASSWORD';" || true
+    sudo -u postgres psql -c "ALTER USER \"$DB_USER\" WITH PASSWORD '$DB_PASSWORD';" || true
+    # Grant privileges on the database
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_DATABASE TO \"$DB_USER\";" || true
+    # Grant schema permissions (needed for migrations)
+    sudo -u postgres psql -d "$DB_DATABASE" -c "GRANT ALL ON SCHEMA public TO \"$DB_USER\";" || true
+    sudo -u postgres psql -d "$DB_DATABASE" -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO \"$DB_USER\";" || true
 fi
 
 # Export environment variables for the app
@@ -113,7 +122,8 @@ echo "Current directory: $(pwd)"
 echo "Checking if ace.js exists:"
 ls -la ace.js || ls -la build/ace.js || echo "ace.js not found in current location"
 
-node ace migration:run
+# Run migrations - pipe 'y' to auto-confirm in production
+echo "y" | node ace migration:run || node ace migration:run --force || true
 MIGRATION_EXIT=$?
 if [ $MIGRATION_EXIT -ne 0 ]; then
     echo "WARNING: Migrations exited with code $MIGRATION_EXIT"
