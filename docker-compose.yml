@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - PORT=8080
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+    container_name: lob-qc-dashboard-local
+
