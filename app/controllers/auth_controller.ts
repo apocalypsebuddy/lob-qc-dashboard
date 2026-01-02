@@ -35,6 +35,22 @@ export default class AuthController {
 
       logger.info('Attempting to register user', { email: data.email })
 
+      // Check if email domain is lob.com
+      const emailDomain = data.email.split('@')[1]?.toLowerCase()
+      if (emailDomain !== 'lob.com') {
+        logger.warn(
+          {
+            email: data.email,
+            domain: emailDomain,
+          },
+          'Registration attempt with invalid email domain'
+        )
+        session.flash('errors', {
+          email: 'Only email addresses with the domain @lob.com are allowed to register.',
+        })
+        return response.redirect().back()
+      }
+
       // Check if user already exists
       const existingUser = await User.findBy('email', data.email)
       if (existingUser) {
@@ -57,19 +73,82 @@ export default class AuthController {
       session.flash('success', 'Account created successfully! Welcome to Seeds Dashboard.')
       return response.redirect('/seeds')
     } catch (error: any) {
-      logger.error('Registration error', { error: error.message, stack: error.stack })
+      logger.error(
+        {
+          error: error.message,
+          stack: error.stack,
+          code: error.code,
+          messages: error.messages,
+        },
+        'Registration error'
+      )
 
-      // If it's a validation error, it will be handled automatically by VineJS
-      // For other errors, show a generic message
-      if (error.code !== 'E_VALIDATION_FAILURE') {
-        session.flash('errors', {
-          general: 'An error occurred during registration. Please try again.',
-        })
+      // Handle validation errors (both E_VALIDATION_FAILURE and E_VALIDATION_ERROR)
+      if (error.code === 'E_VALIDATION_FAILURE' || error.code === 'E_VALIDATION_ERROR') {
+        // Extract validation error messages
+        const errorMessages: Record<string, string> = {}
+
+        if (error.messages) {
+          // Handle array of error messages (VineJS format)
+          if (Array.isArray(error.messages)) {
+            error.messages.forEach((message: any) => {
+              const field = message.field || message.fieldName || 'general'
+              let messageText = message.message || String(message)
+
+              // Replace generic regex error with custom message for email domain validation
+              if (field === 'email' && message.rule === 'regex') {
+                messageText =
+                  'Only email addresses with the domain @lob.com are allowed to register.'
+              }
+
+              errorMessages[field] = messageText
+            })
+          }
+          // Handle object with field names as keys
+          else if (typeof error.messages === 'object') {
+            Object.keys(error.messages).forEach((field) => {
+              const fieldErrors = error.messages[field]
+              if (Array.isArray(fieldErrors)) {
+                // Check if it's a regex validation error for email
+                const firstError = fieldErrors[0]
+                if (
+                  field === 'email' &&
+                  typeof firstError === 'object' &&
+                  firstError.rule === 'regex'
+                ) {
+                  errorMessages[field] =
+                    'Only email addresses with the domain @lob.com are allowed to register.'
+                } else {
+                  errorMessages[field] = firstError?.message || String(firstError)
+                }
+              } else if (typeof fieldErrors === 'string') {
+                errorMessages[field] = fieldErrors
+              } else if (fieldErrors && fieldErrors.message) {
+                errorMessages[field] = fieldErrors.message
+              }
+            })
+          }
+        }
+
+        // If no specific field errors extracted, try to use error.message
+        if (Object.keys(errorMessages).length === 0) {
+          if (error.message) {
+            errorMessages.email = error.message
+          } else {
+            errorMessages.email = 'Validation failed. Please check your input.'
+          }
+        }
+
+        logger.info({ errorMessages }, 'Validation errors extracted and flashed')
+        session.flash('errors', errorMessages)
         return response.redirect().back()
       }
 
-      // Re-throw validation errors so they're handled by VineJS
-      throw error
+      // For other errors, show a generic message
+      session.flash('errors', {
+        general: 'An error occurred during registration. Please try again.',
+      })
+      return response.redirect().back()
     }
   }
 
