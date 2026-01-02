@@ -187,17 +187,6 @@ export default class ScanEventsService {
   }
 
   /**
-   * Detect resource ID from uploaded file
-   * Placeholder for future implementation
-   */
-  static async detectResourceId(filePath: string): Promise<{ resource_id: string }> {
-    // TODO: Implement actual resource ID detection API call
-    // For now, return an error indicating it's not yet implemented
-    logger.warn('Resource ID detection not yet implemented', { filePath })
-    throw new Error('Resource ID detection is not yet implemented')
-  }
-
-  /**
    * Update scan events for a specific resource ID
    * Updates all items with the given resource_id
    */

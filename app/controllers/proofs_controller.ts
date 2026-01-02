@@ -9,6 +9,7 @@ import { join } from 'node:path'
 import LobClient from '#services/lob_client'
 import ImageResizeService, { MAX_UPLOAD_SIZE_BYTES } from '#services/image_resize_service'
 import ScanEventsService from '#services/scan_events_service'
+import ImbBarcodeService from '#services/imb_barcode_service'
 import { DateTime } from 'luxon'
 
 export default class ProofsController {
@@ -1227,16 +1228,33 @@ export default class ProofsController {
       const tempPath = join(tempDir, file.fileName!)
 
       try {
-        // Call detection service (placeholder for now)
-        const result = await ScanEventsService.detectResourceId(tempPath)
-        return response.json(result)
+        // Call IMB barcode analysis service
+        const result = await ImbBarcodeService.analyzeImage(tempPath)
+
+        // Return the result in the expected format
+        if (result.found && result.resource_id) {
+          return response.json({
+            found: true,
+            resource_id: result.resource_id,
+            notes: result.notes || null,
+            tracking_number: result.tracking_number || null,
+            raw_string: result.raw_string || null,
+          })
+        } else {
+          // Return error response when not found or error occurred
+          return response.json({
+            found: false,
+            error: result.error || 'Resource ID could not be found from the IMB barcode',
+          })
+        }
       } catch (error: any) {
         logger.error('Error detecting resource ID', {
           error: error.message,
           stack: error.stack,
         })
         return response.status(500).json({
-          error: 'Resource ID detection is not yet implemented',
+          found: false,
+          error: error.message || 'Failed to detect resource ID',
         })
       } finally {
         // Clean up temp file
