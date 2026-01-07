@@ -629,21 +629,22 @@ export default class ProofsController {
     }
   }
 
-  async indexFactoryProofs({ view, auth, request }: HttpContext) {
+  async indexPartnerProofs({ view, auth, request }: HttpContext) {
     const user = auth.getUserOrFail()
     const csrfToken = request.csrfToken
 
     try {
-      const scanEvents = await ScanEventsService.getScanEvents()
+      // Filter by scan_type='partner'
+      const scanEvents = await ScanEventsService.getScanEvents('partner')
       const groups = scanEvents.groups || []
       logger.info(
-        `Fetched scan events for factory proofs - groups count: ${groups.length}, total resources: ${scanEvents.summary?.total_resources || 0}`
+        `Fetched scan events for partner proofs - groups count: ${groups.length}, total resources: ${scanEvents.summary?.total_resources || 0}`
       )
 
       // Generate URLs for each group
       const groupsWithUrls = groups.map((group) => ({
         ...group,
-        showUrl: router.makeUrl('proofs.showFactoryProof', { resourceId: group.resource_id }),
+        showUrl: router.makeUrl('proofs.showPartnerProof', { resourceId: group.resource_id }),
       }))
 
       logger.info(`Processed groups with URLs - count: ${groupsWithUrls.length}`)
@@ -652,22 +653,22 @@ export default class ProofsController {
       const groupsJson = JSON.stringify(groupsWithUrls)
       const groupsBase64 = Buffer.from(groupsJson, 'utf-8').toString('base64')
 
-      return view.render('proofs/factory-index', {
+      return view.render('proofs/partner-index', {
         groups: groupsWithUrls,
         groupsBase64,
         csrfToken,
       })
     } catch (error: any) {
-      logger.error('Error fetching factory proofs', {
+      logger.error('Error fetching partner proofs', {
         userId: user.id,
         error: error.message,
         stack: error.stack,
       })
-      return view.render('proofs/factory-index', {
+      return view.render('proofs/partner-index', {
         groups: [],
         groupsBase64: Buffer.from(JSON.stringify([]), 'utf-8').toString('base64'),
         csrfToken,
-        error: `Failed to load factory proofs: ${error.message}`,
+        error: `Failed to load partner proofs: ${error.message}`,
       })
     }
   }
@@ -758,7 +759,7 @@ export default class ProofsController {
         'comments',
         'mailpiece_count',
         'print_quality_tags',
-        'quality_ranking',
+        'delivery_quality_tags',
         'status',
       ]
 
@@ -828,7 +829,7 @@ export default class ProofsController {
     }
   }
 
-  async showFactoryProof({ params, view, auth, request }: HttpContext) {
+  async showPartnerProof({ params, view, auth, request }: HttpContext) {
     const user = auth.getUserOrFail()
     const csrfToken = request.csrfToken
     const resourceId = params.resourceId
@@ -848,27 +849,27 @@ export default class ProofsController {
       const dataJson = JSON.stringify({ resourceId, items: sortedItems })
       const dataBase64 = Buffer.from(dataJson, 'utf-8').toString('base64')
 
-      return view.render('proofs/factory-show', {
+      return view.render('proofs/partner-show', {
         resourceId,
         items: sortedItems,
         dataBase64,
         csrfToken,
       })
     } catch (error: any) {
-      logger.error('Error fetching factory proof detail', {
+      logger.error('Error fetching partner proof detail', {
         userId: user.id,
         resourceId,
         error: error.message,
         stack: error.stack,
       })
-      return view.render('proofs/factory-show', {
+      return view.render('proofs/partner-show', {
         resourceId,
         items: [],
         dataBase64: Buffer.from(JSON.stringify({ resourceId, items: [] }), 'utf-8').toString(
           'base64'
         ),
         csrfToken,
-        error: 'Failed to load proof details. Please try again.',
+        error: 'Failed to load QC pull details. Please try again.',
       })
     }
   }
@@ -896,8 +897,8 @@ export default class ProofsController {
         'mailpiece_count',
         'print_quality',
         'print_quality_tags',
+        'delivery_quality_tags',
         'product_size',
-        'quality_ranking',
         'status',
         'comments',
       ]
@@ -1078,10 +1079,10 @@ export default class ProofsController {
     }
   }
 
-  async uploadFactoryProof({ request, response, auth, session }: HttpContext) {
+  async uploadPartnerProof({ request, response, auth, session }: HttpContext) {
     try {
       const user = auth.getUserOrFail()
-      logger.info('Uploading factory proof(s)', { userId: user.id })
+      logger.info('Uploading partner proof(s)', { userId: user.id })
 
       const files = request.files('files', {
         size: '50mb', // Allow larger files initially, will be resized to under 2MB
@@ -1109,23 +1110,39 @@ export default class ProofsController {
       const tempDir = tmpdir()
       const uploadPromises: Promise<void>[] = []
       const tempPaths: string[] = []
+      const errors: string[] = []
+      let successCount = 0
 
       for (const file of files) {
+        // Get the original filename from clientName (original name from browser)
+        const originalFileName = file.clientName || file.fileName || ''
+
         if (!file.isValid) {
+          const errorMsg = `Invalid file "${originalFileName}": ${file.errors?.map((e: any) => e.message).join(', ') || 'Unknown error'}`
           logger.warn('Invalid file in upload', {
             errors: file.errors,
+            clientName: file.clientName,
             fileName: file.fileName,
             size: file.size,
           })
+          errors.push(errorMsg)
           continue
         }
 
         // Parse filename to extract resource_id
         // Format: resourceId_01.png, resourceId_02.jpg, etc.
-        const fileName = file.fileName || ''
-        const match = fileName.match(/^(.+?)_(\d+)(\.[^.]+)?$/)
+        // Handle resourceIds with underscores (e.g., ltr_0ee6f88b8b02280e_01.png)
+        // Match the LAST underscore before the sequence number
+        // Use greedy match to capture everything up to the last underscore before digits
+        const match = originalFileName.match(/^(.+)_(\d+)(\.[^.]+)?$/)
         if (!match) {
-          logger.warn('Filename does not match expected pattern', { fileName })
+          const errorMsg = `Filename "${originalFileName}" does not match expected pattern (resourceId_01.png, resourceId_02.jpg, etc.)`
+          logger.warn('Filename does not match expected pattern', {
+            originalFileName,
+            clientName: file.clientName,
+            fileName: file.fileName,
+          })
+          errors.push(errorMsg)
           continue
         }
 
@@ -1133,59 +1150,77 @@ export default class ProofsController {
         const sequence = match[2]
 
         logger.info('Processing file', {
-          fileName,
+          originalFileName,
+          fileName: file.fileName,
+          clientName: file.clientName,
           resourceId,
           sequence,
           size: file.size,
         })
 
-        // Save file to temp location
-        await file.move(tempDir, { overwrite: true })
-        const tempPath = join(tempDir, file.fileName!)
-        tempPaths.push(tempPath)
+        try {
+          // Save file to temp location
+          await file.move(tempDir, { overwrite: true })
+          const tempPath = join(tempDir, file.fileName!)
+          tempPaths.push(tempPath)
 
-        // Resize image if needed
-        const filePathToUpload = await ImageResizeService.resizeImageIfNeeded(
-          tempPath,
-          MAX_UPLOAD_SIZE_BYTES
-        )
+          // Resize image if needed
+          const filePathToUpload = await ImageResizeService.resizeImageIfNeeded(
+            tempPath,
+            MAX_UPLOAD_SIZE_BYTES
+          )
 
-        // Upload to scan events service
-        uploadPromises.push(
-          ScanEventsService.uploadScan(resourceId, filePathToUpload)
-            .then(() => {
-              logger.info('Scan uploaded successfully', { resourceId, fileName })
-            })
-            .catch((error: any) => {
-              logger.error('Failed to upload scan', {
-                resourceId,
-                fileName,
-                error: error.message,
-              })
-              throw error
-            })
-            .finally(() => {
-              // Clean up temp files
-              unlink(tempPath).catch(() => {})
-              if (filePathToUpload !== tempPath) {
-                unlink(filePathToUpload).catch(() => {})
-              }
-            })
-        )
+          // Upload to scan events service with scan_type='partner' and source='qc_dash'
+          await ScanEventsService.uploadScan(resourceId, filePathToUpload, undefined, {
+            scan_type: 'partner',
+            source: 'qc_dash',
+          })
+          logger.info('Scan uploaded successfully', { resourceId, originalFileName })
+          successCount++
+
+          // Clean up temp files
+          await unlink(tempPath).catch(() => {})
+          if (filePathToUpload !== tempPath) {
+            await unlink(filePathToUpload).catch(() => {})
+          }
+        } catch (error: any) {
+          const errorMsg = `Failed to upload "${originalFileName}" (resourceId: ${resourceId}): ${error.message}`
+          logger.error('Failed to upload scan', {
+            resourceId,
+            originalFileName,
+            clientName: file.clientName,
+            fileName: file.fileName,
+            error: error.message,
+          })
+          errors.push(errorMsg)
+        }
       }
 
-      await Promise.all(uploadPromises)
+      // Show appropriate message based on results
+      if (errors.length > 0 && successCount === 0) {
+        // All failed
+        session.flash('errors', {
+          general: `Failed to upload all files. Errors: ${errors.join('; ')}`,
+        })
+      } else if (errors.length > 0) {
+        // Some succeeded, some failed
+        session.flash('errors', {
+          general: `Successfully uploaded ${successCount} file(s). Errors: ${errors.join('; ')}`,
+        })
+      } else {
+        // All succeeded
+        session.flash('success', `Successfully uploaded ${successCount} QC pull(s)!`)
+      }
 
-      session.flash('success', `Successfully uploaded ${uploadPromises.length} proof(s)!`)
-      return response.redirect().toRoute('proofs.indexFactoryProofs')
+      return response.redirect().toRoute('proofs.indexPartnerProofs')
     } catch (error: any) {
-      logger.error('Error uploading factory proof', {
+      logger.error('Error uploading partner proof', {
         userId: auth.user?.id,
         error: error.message,
         stack: error.stack,
       })
       session.flash('errors', {
-        general: 'Failed to upload proof(s). Please try again.',
+        general: `Failed to upload QC pull(s): ${error.message}`,
       })
       return response.redirect().back()
     }
@@ -1267,6 +1302,192 @@ export default class ProofsController {
         stack: error.stack,
       })
       return response.status(500).json({ error: 'Failed to detect resource ID' })
+    }
+  }
+
+  async getPrintQualityTags({ response }: HttpContext) {
+    try {
+      const scanEvents = await ScanEventsService.getScanEvents()
+      const groups = scanEvents.groups || []
+
+      const tagsSet = new Set<string>()
+
+      // Extract tags from all scan events
+      for (const group of groups) {
+        const latestScan = group.latest_scan || {}
+        const tags = latestScan.print_quality_tags
+
+        if (tags) {
+          // Handle both array and string formats
+          if (Array.isArray(tags)) {
+            tags.forEach((tag: string) => {
+              if (tag && typeof tag === 'string' && tag.trim()) {
+                tagsSet.add(tag.trim())
+              }
+            })
+          } else if (typeof tags === 'string') {
+            // Try to parse as JSON array, otherwise treat as comma-separated
+            try {
+              const parsed = JSON.parse(tags)
+              if (Array.isArray(parsed)) {
+                parsed.forEach((tag: string) => {
+                  if (tag && typeof tag === 'string' && tag.trim()) {
+                    tagsSet.add(tag.trim())
+                  }
+                })
+              } else if (parsed && typeof parsed === 'string' && parsed.trim()) {
+                tagsSet.add(parsed.trim())
+              }
+            } catch {
+              // Not JSON, treat as comma-separated string
+              tags.split(',').forEach((tag: string) => {
+                const trimmed = tag.trim()
+                if (trimmed) {
+                  tagsSet.add(trimmed)
+                }
+              })
+            }
+          }
+        }
+
+        // Also check all scans in the group
+        if (group.scans) {
+          for (const scan of group.scans) {
+            const scanTags = scan.print_quality_tags
+            if (scanTags) {
+              if (Array.isArray(scanTags)) {
+                scanTags.forEach((tag: string) => {
+                  if (tag && typeof tag === 'string' && tag.trim()) {
+                    tagsSet.add(tag.trim())
+                  }
+                })
+              } else if (typeof scanTags === 'string') {
+                try {
+                  const parsed = JSON.parse(scanTags)
+                  if (Array.isArray(parsed)) {
+                    parsed.forEach((tag: string) => {
+                      if (tag && typeof tag === 'string' && tag.trim()) {
+                        tagsSet.add(tag.trim())
+                      }
+                    })
+                  } else if (parsed && typeof parsed === 'string' && parsed.trim()) {
+                    tagsSet.add(parsed.trim())
+                  }
+                } catch {
+                  scanTags.split(',').forEach((tag: string) => {
+                    const trimmed = tag.trim()
+                    if (trimmed) {
+                      tagsSet.add(trimmed)
+                    }
+                  })
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const tagsArray = Array.from(tagsSet).sort()
+      return response.json(tagsArray)
+    } catch (error: any) {
+      logger.error('Error fetching print quality tags', {
+        error: error.message,
+        stack: error.stack,
+      })
+      return response.status(500).json({ error: 'Failed to fetch print quality tags' })
+    }
+  }
+
+  async getDeliveryQualityTags({ response }: HttpContext) {
+    try {
+      const scanEvents = await ScanEventsService.getScanEvents()
+      const groups = scanEvents.groups || []
+
+      const tagsSet = new Set<string>()
+
+      // Extract tags from all scan events
+      for (const group of groups) {
+        const latestScan = group.latest_scan || {}
+        const tags = latestScan.delivery_quality_tags
+
+        if (tags) {
+          // Handle both array and string formats
+          if (Array.isArray(tags)) {
+            tags.forEach((tag: string) => {
+              if (tag && typeof tag === 'string' && tag.trim()) {
+                tagsSet.add(tag.trim())
+              }
+            })
+          } else if (typeof tags === 'string') {
+            // Try to parse as JSON array, otherwise treat as comma-separated
+            try {
+              const parsed = JSON.parse(tags)
+              if (Array.isArray(parsed)) {
+                parsed.forEach((tag: string) => {
+                  if (tag && typeof tag === 'string' && tag.trim()) {
+                    tagsSet.add(tag.trim())
+                  }
+                })
+              } else if (parsed && typeof parsed === 'string' && parsed.trim()) {
+                tagsSet.add(parsed.trim())
+              }
+            } catch {
+              // Not JSON, treat as comma-separated string
+              tags.split(',').forEach((tag: string) => {
+                const trimmed = tag.trim()
+                if (trimmed) {
+                  tagsSet.add(trimmed)
+                }
+              })
+            }
+          }
+        }
+
+        // Also check all scans in the group
+        if (group.scans) {
+          for (const scan of group.scans) {
+            const scanTags = scan.delivery_quality_tags
+            if (scanTags) {
+              if (Array.isArray(scanTags)) {
+                scanTags.forEach((tag: string) => {
+                  if (tag && typeof tag === 'string' && tag.trim()) {
+                    tagsSet.add(tag.trim())
+                  }
+                })
+              } else if (typeof scanTags === 'string') {
+                try {
+                  const parsed = JSON.parse(scanTags)
+                  if (Array.isArray(parsed)) {
+                    parsed.forEach((tag: string) => {
+                      if (tag && typeof tag === 'string' && tag.trim()) {
+                        tagsSet.add(tag.trim())
+                      }
+                    })
+                  } else if (parsed && typeof parsed === 'string' && parsed.trim()) {
+                    tagsSet.add(parsed.trim())
+                  }
+                } catch {
+                  scanTags.split(',').forEach((tag: string) => {
+                    const trimmed = tag.trim()
+                    if (trimmed) {
+                      tagsSet.add(trimmed)
+                    }
+                  })
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const tagsArray = Array.from(tagsSet).sort()
+      return response.json(tagsArray)
+    } catch (error: any) {
+      logger.error('Error fetching delivery quality tags', {
+        error: error.message,
+        stack: error.stack,
+      })
+      return response.status(500).json({ error: 'Failed to fetch delivery quality tags' })
     }
   }
 }

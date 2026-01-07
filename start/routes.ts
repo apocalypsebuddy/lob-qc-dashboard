@@ -52,17 +52,23 @@ router
     router
       .post('/proofs/orphan/detect-resource-id', [ProofsController, 'detectResourceId'])
       .as('proofs.detectResourceId')
+    router
+      .get('/api/print-quality-tags', [ProofsController, 'getPrintQualityTags'])
+      .as('api.printQualityTags')
+    router
+      .get('/api/delivery-quality-tags', [ProofsController, 'getDeliveryQualityTags'])
+      .as('api.deliveryQualityTags')
 
-    // Factory proofs routes (must come before /proofs/:publicId to avoid route conflicts)
+    // Partner proofs routes (must come before /proofs/:publicId to avoid route conflicts)
     router
-      .get('/proofs/factory', [ProofsController, 'indexFactoryProofs'])
-      .as('proofs.indexFactoryProofs')
+      .get('/proofs/partner', [ProofsController, 'indexPartnerProofs'])
+      .as('proofs.indexPartnerProofs')
     router
-      .get('/proofs/factory/:resourceId', [ProofsController, 'showFactoryProof'])
-      .as('proofs.showFactoryProof')
+      .get('/proofs/partner/:resourceId', [ProofsController, 'showPartnerProof'])
+      .as('proofs.showPartnerProof')
     router
-      .post('/proofs/factory/upload', [ProofsController, 'uploadFactoryProof'])
-      .as('proofs.uploadFactoryProof')
+      .post('/proofs/partner/upload', [ProofsController, 'uploadPartnerProof'])
+      .as('proofs.uploadPartnerProof')
 
     // Seed proofs routes (database-backed proofs)
     router.get('/proofs/:publicId', [ProofsController, 'show']).as('proofs.show')

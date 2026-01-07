@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
-      Factory Proofs - Seeds Dashboard
+      Partner QC Pulls - Seeds Dashboard
     </title>
     <script src="https://cdn.tailwindcss.com">
 
@@ -29,7 +29,7 @@
               <a
                 href="{{ route('proofs.index') }}"
                 class="border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-              >Proofs</a>
+              >QC Pulls</a>
               <a
                 href="{{ route('settings.edit') }}"
                 class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
@@ -54,7 +54,7 @@
       <div id="mobileMenu" class="hidden sm:hidden border-t border-gray-200">
         <div class="pt-2 pb-3 space-y-1">
           <a href="{{ route('seeds.index') }}" class="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300">Seed templates</a>
-          <a href="{{ route('proofs.index') }}" class="block pl-3 pr-4 py-2 border-l-4 border-blue-500 text-base font-medium text-blue-700 bg-blue-50">Proofs</a>
+          <a href="{{ route('proofs.index') }}" class="block pl-3 pr-4 py-2 border-l-4 border-blue-500 text-base font-medium text-blue-700 bg-blue-50">QC Pulls</a>
           <a href="{{ route('settings.edit') }}" class="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300">Settings</a>
         </div>
         <div class="pt-4 pb-3 border-t border-gray-200">
@@ -70,7 +70,7 @@
       <div class="px-4 py-8 sm:px-0">
         <div class="mb-6">
           <h1 class="text-3xl font-bold mb-6">
-            Proofs
+            QC Pulls
           </h1>
 
           <!-- Tab Navigation -->
@@ -80,19 +80,19 @@
                 href="{{ route('proofs.index') }}"
                 class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
               >
-                Seed Proofs
+                Seed QC Pulls
               </a>
               <a
                 href="{{ route('proofs.indexOrphanProofs') }}"
                 class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
               >
-                Orphan Proofs
+                Orphan QC Pulls
               </a>
               <a
-                href="{{ route('proofs.indexFactoryProofs') }}"
+                href="{{ route('proofs.indexPartnerProofs') }}"
                 class="border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
               >
-                Factory Proofs
+                Partner QC Pulls
               </a>
             </nav>
           </div>
@@ -100,11 +100,11 @@
 
         <!-- Upload Form -->
         <div class="bg-white shadow rounded-lg p-6 mb-6">
-          <h2 class="text-xl font-semibold mb-4">Bulk Upload Factory Proofs</h2>
+          <h2 class="text-xl font-semibold mb-4">Bulk Upload Partner QC Pulls</h2>
           <p class="text-sm text-gray-600 mb-4">
             Upload multiple files at once. Filenames should be in the format: <code class="bg-gray-100 px-2 py-1 rounded">resourceId_01.png</code>, <code class="bg-gray-100 px-2 py-1 rounded">resourceId_02.png</code>, etc.
           </p>
-          <form method="POST" action="{{ route('proofs.uploadFactoryProof') }}" enctype="multipart/form-data" class="space-y-4">
+          <form method="POST" action="{{ route('proofs.uploadPartnerProof') }}" enctype="multipart/form-data" class="space-y-4">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
             <div class="flex items-end gap-4">
               <div class="flex-1">
@@ -190,7 +190,7 @@
 
           if (!groups || groups.length === 0) {
             console.log('Factory - No groups found, showing empty message');
-            container.innerHTML = '<div class="bg-white shadow rounded-lg p-8 text-center"><p class="text-gray-500">No factory proofs yet.</p></div>';
+            container.innerHTML = '<div class="bg-white shadow rounded-lg p-8 text-center"><p class="text-gray-500">No partner QC pulls yet.</p></div>';
           } else {
             const getThumbnailCell = (group) => {
               const latestScan = group.latest_scan || {};
@@ -203,7 +203,7 @@
             // Mobile cards
             const cards = groups.map(group => {
               const latestScan = group.latest_scan || {};
-              const showUrl = group.showUrl || `/proofs/factory/${group.resource_id}`;
+              const showUrl = group.showUrl || `/proofs/partner/${group.resource_id}`;
               const createdAt = latestScan.created_at || latestScan.timestamp || '-';
               const updatedAt = latestScan.updated_at || latestScan.timestamp || '-';
               const fileSize = latestScan.file_size ? (latestScan.file_size / 1024).toFixed(1) + ' KB' : '-';
@@ -230,7 +230,7 @@
             // Desktop table rows
             const rows = groups.map(group => {
               const latestScan = group.latest_scan || {};
-              const showUrl = group.showUrl || `/proofs/factory/${group.resource_id}`;
+              const showUrl = group.showUrl || `/proofs/partner/${group.resource_id}`;
               const createdAt = latestScan.created_at || latestScan.timestamp || '-';
               const updatedAt = latestScan.updated_at || latestScan.timestamp || '-';
               const fileSize = latestScan.file_size ? (latestScan.file_size / 1024).toFixed(1) + ' KB' : '-';
